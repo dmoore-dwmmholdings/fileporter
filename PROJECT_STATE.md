@@ -35,6 +35,7 @@ The repository has source and automated loopback coverage for these paths. It is
 | 2026-08-31 | MSVC Windows Tauri bundle paths: MSI and NSIS | Both completed successfully. The first-run smoke after the runtime-spawner panic fix remained bounded and healthy. |
 | 2026-08-31 | `cargo check --manifest-path src-tauri/Cargo.toml --features desktop` | Passed. |
 | 2026-08-31 | `./scripts/core-smoke.ps1` | Passed focused automatic trust, discovery-identity mismatch rejection, bilateral confirmation-required, discovery adapter, multi-entry scheduler, resume, offline and fan-out scenarios. |
+| 2026-08-31 | Windows `0.1.1` installed-startup regression smoke | Captured the `tokio::spawn`-without-reactor panic from the installed `0.1.0`, moved the desktop scheduler to Tauri's owned runtime, marked release builds as Windows GUI subsystem, then required the silently reinstalled NSIS executable to remain alive for 10 seconds and log `listener.reconciled` against the existing user database. |
 | 2026-08-31 | `.github/workflows/ci.yml` unsigned bundle job | Windows MSI/NSIS and macOS DMG/app CI artifacts build unsigned after frontend/Rust gates and are retained 14 days; this is not signing/notarization or installer acceptance. |
 
 ## Remaining unproven evidence and release blockers

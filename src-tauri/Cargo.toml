@@ -1,6 +1,6 @@
 [package]
 name = "fileporter"
-version = "0.1.0"
+version = "0.1.1"
 description = "Direct local-network file transfer"
 authors = ["Fileporter contributors"]
 license = "MIT OR Apache-2.0"

@@ -41,6 +41,9 @@ struct SenderScheduler {
     cancellation: CancellationToken,
     running: AtomicBool,
     active: Mutex<HashMap<String, CancellationToken>>,
+    #[cfg(feature = "desktop")]
+    task: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
+    #[cfg(not(feature = "desktop"))]
     task: Mutex<Option<tokio::task::JoinHandle<()>>>,
     wake: Notify,
 }
@@ -501,82 +504,91 @@ impl AppState {
             return;
         }
         let state = self.clone();
+        // Desktop setup is synchronous and is not entered into Tokio's reactor.
+        // Use Tauri's owned runtime there; core tests already run inside Tokio.
+        #[cfg(feature = "desktop")]
+        let task = tauri::async_runtime::spawn(async move {
+            state.run_sender_scheduler().await;
+        });
+        #[cfg(not(feature = "desktop"))]
         let task = tokio::spawn(async move {
-            loop {
-                if state.scheduler.cancellation.is_cancelled() {
-                    break;
-                }
-                if state.suspended.load(Ordering::Acquire) {
-                    tokio::time::sleep(std::time::Duration::from_millis(250)).await;
-                    continue;
-                }
-                for device_id in state.discovery.refresh(&state.settings, unix_now()) {
-                    let _ = state.wake_waiting_peer(&device_id);
-                }
-                state.start_automatic_pairings();
-                let candidates = state.settings.outgoing_batches().unwrap_or_default();
-                for record in candidates {
-                    if state.scheduler.cancellation.is_cancelled() {
-                        break;
-                    }
-                    if !matches!(record.batch.state.as_str(), "queued" | "sending")
-                        || record.items.is_empty()
-                    {
-                        continue;
-                    }
-                    if state
-                        .scheduler
-                        .active
-                        .lock()
-                        .expect("sender scheduler mutex poisoned")
-                        .contains_key(&record.batch.id)
-                    {
-                        continue;
-                    }
-                    if state.defer_unavailable_targets(&record).unwrap_or(false) {
-                        continue;
-                    }
-                    if record
-                        .targets
-                        .iter()
-                        .all(|target| target.retry_at.is_some_and(|at| at > unix_now()))
-                    {
-                        continue;
-                    }
-                    let token = state.scheduler.cancellation.child_token();
-                    state
-                        .scheduler
-                        .active
-                        .lock()
-                        .expect("sender scheduler mutex poisoned")
-                        .insert(record.batch.id.clone(), token.clone());
-                    // Each worker persists its own target failure before it
-                    // returns.  Do not overwrite an arbitrary sibling target
-                    // here merely because a fan-out aggregate returned Err.
-                    if state
-                        .send_queued_file(&record.batch.id, token)
-                        .await
-                        .is_err()
-                        && !record.batch.wait_for_available
-                    {
-                        let _ = state.record_immediate_failure(&record.batch.id);
-                    }
-                    state
-                        .scheduler
-                        .active
-                        .lock()
-                        .expect("sender scheduler mutex poisoned")
-                        .remove(&record.batch.id);
-                }
-                tokio::select! { _ = state.scheduler.cancellation.cancelled() => break, _ = state.scheduler.wake.notified() => {}, _ = tokio::time::sleep(std::time::Duration::from_secs(1)) => {} }
-            }
-            state.scheduler.running.store(false, Ordering::Release);
+            state.run_sender_scheduler().await;
         });
         *self
             .scheduler
             .task
             .lock()
             .expect("sender scheduler mutex poisoned") = Some(task);
+    }
+
+    async fn run_sender_scheduler(&self) {
+        loop {
+            if self.scheduler.cancellation.is_cancelled() {
+                break;
+            }
+            if self.suspended.load(Ordering::Acquire) {
+                tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+                continue;
+            }
+            for device_id in self.discovery.refresh(&self.settings, unix_now()) {
+                let _ = self.wake_waiting_peer(&device_id);
+            }
+            self.start_automatic_pairings();
+            let candidates = self.settings.outgoing_batches().unwrap_or_default();
+            for record in candidates {
+                if self.scheduler.cancellation.is_cancelled() {
+                    break;
+                }
+                if !matches!(record.batch.state.as_str(), "queued" | "sending")
+                    || record.items.is_empty()
+                {
+                    continue;
+                }
+                if self
+                    .scheduler
+                    .active
+                    .lock()
+                    .expect("sender scheduler mutex poisoned")
+                    .contains_key(&record.batch.id)
+                {
+                    continue;
+                }
+                if self.defer_unavailable_targets(&record).unwrap_or(false) {
+                    continue;
+                }
+                if record
+                    .targets
+                    .iter()
+                    .all(|target| target.retry_at.is_some_and(|at| at > unix_now()))
+                {
+                    continue;
+                }
+                let token = self.scheduler.cancellation.child_token();
+                self.scheduler
+                    .active
+                    .lock()
+                    .expect("sender scheduler mutex poisoned")
+                    .insert(record.batch.id.clone(), token.clone());
+                // Each worker persists its own target failure before it returns.
+                // Do not overwrite an arbitrary sibling target here merely
+                // because a fan-out aggregate returned Err.
+                if self
+                    .send_queued_file(&record.batch.id, token)
+                    .await
+                    .is_err()
+                    && !record.batch.wait_for_available
+                {
+                    let _ = self.record_immediate_failure(&record.batch.id);
+                }
+                self.scheduler
+                    .active
+                    .lock()
+                    .expect("sender scheduler mutex poisoned")
+                    .remove(&record.batch.id);
+            }
+            tokio::select! { _ = self.scheduler.cancellation.cancelled() => break, _ = self.scheduler.wake.notified() => {}, _ = tokio::time::sleep(std::time::Duration::from_secs(1)) => {} }
+        }
+        self.scheduler.running.store(false, Ordering::Release);
     }
 
     /// Starts authenticated trust-on-first-discovery exchanges in the

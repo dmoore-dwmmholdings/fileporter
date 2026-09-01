@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Fileporter",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "io.fileporter.desktop",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -31,7 +31,7 @@
     "targets": "all",
     "category": "Utility",
     "shortDescription": "Private local-network file transfer",
-    "longDescription": "Fileporter transfers files directly between devices you explicitly pair on a private local network.",
+    "longDescription": "Fileporter transfers files directly between automatically discovered devices on a private local network.",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico", "icons/icon.icns"],
     "windows": { "nsis": { "installMode": "currentUser", "installerIcon": "icons/icon.ico" } },
     "macOS": { "minimumSystemVersion": "12.0", "infoPlist": "Info.plist" }
