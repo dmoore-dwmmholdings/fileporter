@@ -7,13 +7,13 @@ import type { BackendAppSnapshot } from './types/view-models';
 const onboardingSnapshot: BackendAppSnapshot = {
   revision: 1,
   lifecycle: { windowVisible: true, receivingEnabled: true, listening: false, receiving: false, shuttingDown: false },
-  settings: { deviceName: '', receiveDirectory: null, onboardingComplete: false, launchAtLogin: true, notificationsEnabled: true, receivingEnabled: true, preferredListenAddress: '127.0.0.1:0', preferredListenPort: 0, historyRetentionDays: 30 },
+  settings: { deviceName: '', receiveDirectory: null, onboardingComplete: false, launchAtLogin: true, notificationsEnabled: true, receivingEnabled: true, automaticDeviceTrust: true, preferredListenAddress: '127.0.0.1:0', preferredListenPort: 0, historyRetentionDays: 30 },
   managersStarted: false, localDeviceName: '', devices: [], nearbyDevices: [], transfers: [], history: [], queuedBatches: [], pairing: { localDeviceId: 'local', pendingPairings: [], trustedDevices: [] }, network: { listening: false, boundEndpoint: null, preferredListenAddress: '127.0.0.1:0', trustedOnlineEndpoints: [], mdnsState: 'stopped', localInterfaceSummaries: [], recentErrorCodes: [] }, about: { appVersion: '0.1.0', protocolVersion: 1, logsAvailable: true, databaseMigrationVersion: 8, ownedStagingBytes: 0 }
 };
 const readySnapshot: BackendAppSnapshot = {
   revision: 2,
   lifecycle: { windowVisible: true, receivingEnabled: true, listening: false, receiving: false, shuttingDown: false },
-  settings: { deviceName: 'Desk', receiveDirectory: 'C:\\Fileporter', onboardingComplete: true, launchAtLogin: true, notificationsEnabled: true, receivingEnabled: true, preferredListenAddress: '127.0.0.1:48721', preferredListenPort: 48721, historyRetentionDays: 30 },
+  settings: { deviceName: 'Desk', receiveDirectory: 'C:\\Fileporter', onboardingComplete: true, launchAtLogin: true, notificationsEnabled: true, receivingEnabled: true, automaticDeviceTrust: true, preferredListenAddress: '127.0.0.1:48721', preferredListenPort: 48721, historyRetentionDays: 30 },
   managersStarted: true, localDeviceName: 'Desk', devices: [], nearbyDevices: [], transfers: [], history: [], queuedBatches: [], pairing: { localDeviceId: 'local', pendingPairings: [], trustedDevices: [] }, network: { listening: true, boundEndpoint: '127.0.0.1:48721', preferredListenAddress: '127.0.0.1:48721', trustedOnlineEndpoints: [], mdnsState: 'advertising', localInterfaceSummaries: ['Wi-Fi: 192.168.1.8'], recentErrorCodes: [] }, about: { appVersion: '0.1.0', protocolVersion: 1, logsAvailable: true, databaseMigrationVersion: 8, ownedStagingBytes: 0 }
 };
 
@@ -65,13 +65,13 @@ it('validates onboarding, chooses a folder, and completes setup', async () => {
   const complete = vi.spyOn(appBridge, 'completeOnboarding').mockResolvedValue({ ...readySnapshot, revision: 3, localDeviceName: 'Studio Mac', settings: { ...readySnapshot.settings, deviceName: 'Studio Mac', receiveDirectory: 'C:\\Incoming' } });
   render(<App />);
   expect(await screen.findByText(/Send files directly/)).toBeVisible();
-  expect(screen.getByRole('button', { name: 'Continue to pairing' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Finish setup' })).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Device name'), { target: { value: 'Studio Mac' } });
   fireEvent.click(screen.getByRole('button', { name: 'Choose' }));
   await waitFor(() => expect(choose).toHaveBeenCalledOnce());
   expect(await screen.findByDisplayValue('C:\\Incoming')).toBeVisible();
-  fireEvent.click(screen.getByRole('button', { name: 'Continue to pairing' }));
-  await waitFor(() => expect(complete).toHaveBeenCalledWith({ deviceName: 'Studio Mac', receiveDirectory: 'C:\\Incoming', launchAtLogin: true, notificationsEnabled: true }));
+  fireEvent.click(screen.getByRole('button', { name: 'Finish setup' }));
+  await waitFor(() => expect(complete).toHaveBeenCalledWith({ deviceName: 'Studio Mac', receiveDirectory: 'C:\\Incoming', launchAtLogin: true, notificationsEnabled: true, automaticDeviceTrust: true }));
   expect(await screen.findByText('Studio Mac')).toBeVisible();
 });
 
@@ -189,8 +189,9 @@ it('saves every editable settings field through the supported patch DTO', async 
   fireEvent.click(screen.getByLabelText('Accept incoming transfers'));
   fireEvent.click(screen.getByLabelText('Launch Fileporter when I sign in'));
   fireEvent.click(screen.getByLabelText('Notify me when files arrive'));
+  fireEvent.click(screen.getByLabelText('Automatically trust authenticated Fileporter devices on this private network'));
   fireEvent.click(screen.getByRole('button', { name: 'Save settings' }));
-  await waitFor(() => expect(update).toHaveBeenCalledWith({ deviceName: 'Studio', receiveDirectory: 'C:\\Incoming', receivingEnabled: false, listenAddress: '127.0.0.1:48721', launchAtLogin: false, notificationsEnabled: false, historyRetentionDays: 30 }));
+  await waitFor(() => expect(update).toHaveBeenCalledWith({ deviceName: 'Studio', receiveDirectory: 'C:\\Incoming', receivingEnabled: false, listenAddress: '127.0.0.1:48721', launchAtLogin: false, notificationsEnabled: false, automaticDeviceTrust: false, historyRetentionDays: 30 }));
 });
 
 it('shows snapshot-backed diagnostics and about actions without path input', async () => {

@@ -1,8 +1,10 @@
 # Fileporter
 
-Fileporter is a Windows/macOS desktop app for direct, trusted local-network file transfer. Devices discover each other through local DNS-SD/mDNS (`_fileporter._tcp.local.`), or can be paired using a validated private `host:port` endpoint when multicast is unavailable.
+Fileporter is a Windows/macOS desktop app for direct, trusted local-network file transfer. Fileporter devices discover and connect to each other automatically through local DNS-SD/mDNS (`_fileporter._tcp.local.`); a validated private `host:port` fallback is available when multicast is unavailable.
 
-Every installation has an Ed25519 identity and an identity-bound self-signed TLS certificate. Pairing exchanges signed transcript proofs and a short authentication code (SAS); trust requires explicit confirmation on both devices and pins the identity and certificate. Discovery alone never grants trust or transfer permission.
+Every installation has an Ed25519 identity and an identity-bound self-signed TLS certificate. On first discovery, both peers prove possession of their identities over TLS and exchange authenticated confirmations before pinning each other. This authenticated trust-on-first-discovery mode is enabled by default for low-friction personal LAN use. Settings can disable it and require the existing matching-code (SAS) confirmation on both devices. A forgotten identity remains revoked and cannot silently rejoin; an endpoint whose identity differs from its discovery record is rejected.
+
+Automatic first trust does not prove that a newly seen device belongs to you: another Fileporter user on a hostile shared LAN could be trusted. Use the confirmation-required setting on networks you do not control.
 
 Transfers use an authenticated pinned TLS connection, bounded protocol frames, staged receiving, durable acknowledgements/checkpoints, BLAKE3 verification, and no-overwrite finalization. The current release should still be validated with two physical peers before distribution.
 
@@ -39,10 +41,10 @@ it does not write to your normal Fileporter data.
 ./scripts/core-smoke.ps1
 ```
 
-It covers bilateral pairing confirmation, trusted discovery behavior, multi-entry
+It covers automatic authenticated trust, bilateral confirmation-required behavior, trusted discovery, multi-entry
 scheduling, interrupted-transfer resume, offline queue wake-up, and fan-out with a
 failed sibling target. For real acceptance, use two physical private-LAN machines:
-pair them, transfer files and directories, close both main windows to confirm tray
+let them discover each other, transfer files and directories, close both main windows to confirm tray
 receiving, then repeat through the manual private `host:port` route with multicast
 disabled. Those physical tests are not replaced by loopback coverage.
 

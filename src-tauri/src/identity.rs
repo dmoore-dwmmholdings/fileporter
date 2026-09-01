@@ -328,8 +328,8 @@ impl PairingCoordinator {
         Ok(view(&pairing))
     }
     /// Registers a peer only after the pairing TLS authentication and signed
-    /// transcript have completed. This remains pending until both users send
-    /// their explicit `PairConfirmed` frames.
+    /// transcript have completed. The transport may confirm it automatically
+    /// when authenticated local-network discovery is enabled.
     pub(crate) fn request_authenticated(
         &self,
         remote_name: String,
@@ -338,6 +338,11 @@ impl PairingCoordinator {
     ) -> Result<PendingPairingView, AppError> {
         let sas_code = validate_sas_code(&sas_code)?;
         let remote_name = validate_text(&remote_name, "remoteName")?;
+        // A durable row is also the deny record for a forgotten device. Never
+        // let background discovery silently clear revocation or replace a pin.
+        if self.repository.trusted_peer(&peer.device_id)?.is_some() {
+            return Err(invalid_pairing("publicKey"));
+        }
         let now = unix_now();
         let pairing = PendingPairing {
             id: format!("pairing-{}-{}", peer.device_id, now_nanos()),
@@ -378,7 +383,7 @@ impl PairingCoordinator {
             return Err(invalid_pairing("pairingId"));
         }
         match session.confirm_local(now) {
-            Ok(PairingState::LocalConfirmed) => {
+            Ok(PairingState::LocalConfirmed | PairingState::Confirmed) => {
                 self.repository
                     .mark_pairing_confirmation(pairing_id, true, now_unix)?;
             }
@@ -407,7 +412,7 @@ impl PairingCoordinator {
             local_alias: None,
             paired_at: now_unix,
             last_seen_at: None,
-            auto_send: false,
+            auto_send: true,
             revoked_at: None,
             endpoint: None,
         };
@@ -458,7 +463,7 @@ impl PairingCoordinator {
             local_alias: None,
             paired_at: now_unix,
             last_seen_at: None,
-            auto_send: false,
+            auto_send: true,
             revoked_at: None,
             endpoint: None,
         };
@@ -466,6 +471,13 @@ impl PairingCoordinator {
             .commit_confirmed_pairing(&pairing.id, &peer, now_unix)?;
         sessions.remove(index);
         Ok(Some(trusted_view(&peer)))
+    }
+
+    pub(crate) fn automatic_device_trust_enabled(&self) -> bool {
+        self.repository
+            .load()
+            .map(|settings| settings.automatic_device_trust)
+            .unwrap_or(false)
     }
     pub fn reject(&self, pairing_id: &str) -> Result<(), AppError> {
         let mut sessions = self.sessions.lock().expect("pairing mutex poisoned");

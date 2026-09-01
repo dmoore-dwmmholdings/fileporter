@@ -1,8 +1,9 @@
 //! LAN discovery is deliberately an unauthenticated *hint* channel.
 //!
-//! The adapter boundary keeps multicast out of unit tests.  A discovery record
-//! never creates trust: it is accepted only when both its stable device id and
-//! certificate pin match an already-paired peer.
+//! The adapter boundary keeps multicast out of unit tests. A discovery record
+//! can trigger the limited authenticated pairing channel, but it never grants
+//! transfer trust by itself. Online presence still requires an exact durable
+//! device-id and certificate-pin match.
 
 use std::{
     collections::{HashMap, VecDeque},
@@ -358,6 +359,14 @@ impl DiscoveryCoordinator {
             );
             return true;
         };
+        // A revoked row is a durable deny decision, not a trusted presence.
+        if peer.revoked_at.is_some() {
+            self.nearby
+                .lock()
+                .expect("nearby mutex poisoned")
+                .remove(&record.device_id);
+            return false;
+        }
         // Correlate the discovery claim with the durable identity/pin before
         // recording reachability or changing a usable endpoint.
         if normalize_pin(&peer.certificate_fingerprint)
@@ -371,6 +380,10 @@ impl DiscoveryCoordinator {
         if repository.upsert_trusted_peer(&updated).is_err() {
             return false;
         }
+        self.nearby
+            .lock()
+            .expect("nearby mutex poisoned")
+            .remove(&record.device_id);
         self.presence
             .lock()
             .expect("presence mutex poisoned")
@@ -455,6 +468,16 @@ impl DiscoveryCoordinator {
             .expect("nearby mutex poisoned")
             .get(id)
             .cloned()
+    }
+
+    /// Re-correlates a retained discovery candidate after an authenticated
+    /// trust exchange commits, promoting it to online presence only on an
+    /// exact durable certificate-pin match.
+    pub fn promote_trusted(&self, id: &str, repository: &SettingsRepository, now: i64) -> bool {
+        let Some(candidate) = self.candidate(id) else {
+            return false;
+        };
+        self.observe(candidate.record, repository, now)
     }
 }
 
@@ -582,5 +605,32 @@ mod tests {
         let state = mock.lock().unwrap();
         assert_eq!(state.published.len(), 2);
         assert_eq!(state.withdraws, 2);
+    }
+
+    #[test]
+    fn revoked_identity_is_neither_nearby_nor_online_and_cannot_be_promoted() {
+        let temp = tempfile::tempdir().unwrap();
+        let repo = SettingsRepository::open(temp.path().join("db.sqlite")).unwrap();
+        let mut revoked = peer("forgotten", &"a1".repeat(32));
+        revoked.revoked_at = Some(9);
+        repo.upsert_trusted_peer(&revoked).unwrap();
+        let mock = Arc::new(Mutex::new(Mock::default()));
+        mock.lock().unwrap().records.push_back(vec![record(
+            "forgotten",
+            &"a1".repeat(32),
+            "127.0.0.1:4242",
+        )]);
+        let discovery = DiscoveryCoordinator::new(Box::new(mock));
+
+        assert!(discovery.refresh(&repo, 10).is_empty());
+        assert!(discovery.nearby().is_empty());
+        assert!(!discovery.promote_trusted("forgotten", &repo, 11));
+        assert!(!discovery.snapshot(&revoked).online);
+        assert!(repo
+            .trusted_peer("forgotten")
+            .unwrap()
+            .unwrap()
+            .endpoint
+            .is_none());
     }
 }

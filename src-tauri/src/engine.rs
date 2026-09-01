@@ -410,7 +410,8 @@ impl PairingService {
                 &exchange.peer,
                 exchange.sas,
             ) {
-                self.register(pending.id, exchange.session_id, tls);
+                self.register(pending.id.clone(), exchange.session_id, tls);
+                self.confirm_automatically(&pending.id);
             }
         }
         let _ = source;
@@ -420,6 +421,7 @@ impl PairingService {
         &self,
         endpoint: SocketAddr,
         device_name: String,
+        expected_peer: Option<(&str, &str)>,
     ) -> Result<crate::identity::PendingPairingView, ListenerError> {
         if endpoint.port() == 0
             || !is_loopback_or_private(endpoint.ip())
@@ -440,12 +442,39 @@ impl PairingService {
             PairingRole::Initiator,
         )
         .await?;
+        if let Some((expected_device_id, expected_fingerprint)) = expected_peer {
+            let actual_fingerprint = format!(
+                "blake3:{}",
+                hex::encode(exchange.peer.certificate_fingerprint)
+            );
+            if exchange.peer.device_id != expected_device_id
+                || !actual_fingerprint.eq_ignore_ascii_case(expected_fingerprint)
+            {
+                return Err(pairing_io("discovered identity did not match endpoint"));
+            }
+        }
         let pending = self
             .coordinator
             .request_authenticated(exchange.remote_name, &exchange.peer, exchange.sas)
             .map_err(|_| pairing_io("could not create pairing"))?;
         self.register(pending.id.clone(), exchange.session_id, stream);
+        self.confirm_automatically(&pending.id);
         Ok(pending)
+    }
+
+    fn confirm_automatically(&self, id: &str) {
+        if !self.coordinator.automatic_device_trust_enabled() {
+            return;
+        }
+        let Ok(session_id) = self.session_id(id) else {
+            return;
+        };
+        if self.coordinator.confirm(id).is_ok() {
+            self.send(
+                id,
+                ControlMessage::PairConfirmed(fileporter_protocol::PairConfirmed { session_id }),
+            );
+        }
     }
     fn session_id(&self, id: &str) -> Result<uuid::Uuid, crate::error::AppError> {
         self.active
@@ -484,12 +513,28 @@ impl PairingService {
         tokio::spawn(async move {
             let mut stream = stream;
             let deadline = Instant::now() + Duration::from_secs(120);
+            let mut local_confirmation_sent = false;
+            let mut remote_confirmed = false;
             loop {
                 tokio::select! {
                     _ = cancellation.cancelled() => { let _ = coordinator.reject(&id); break; }
-                    outbound = rx.recv() => match outbound { Some(message) => { if send_control_frame(&mut stream, message).await.is_err() { break; } }, None => break },
+                    outbound = rx.recv() => match outbound {
+                        Some(message) => {
+                            let confirms = matches!(message, ControlMessage::PairConfirmed(_));
+                            if send_control_frame(&mut stream, message).await.is_err() { break; }
+                            if confirms {
+                                local_confirmation_sent = true;
+                                if remote_confirmed { break; }
+                            }
+                        },
+                        None => break
+                    },
                     inbound = timeout_at(deadline, receive_control_frame(&mut stream)) => match inbound {
-                        Ok(Ok(ControlMessage::PairConfirmed(value))) if value.session_id == session_id => { let _ = coordinator.confirm_remote(&id); break; }
+                        Ok(Ok(ControlMessage::PairConfirmed(value))) if value.session_id == session_id => {
+                            if coordinator.confirm_remote(&id).is_err() { break; }
+                            remote_confirmed = true;
+                            if local_confirmation_sent { break; }
+                        }
                         Ok(Ok(ControlMessage::PairRejected(value))) if value.session_id == session_id => { let _ = coordinator.reject(&id); break; }
                         _ => { let _ = coordinator.reject(&id); break; }
                     }
@@ -541,7 +586,8 @@ impl PairingService {
                 .coordinator
                 .request_authenticated(exchange.remote_name, &exchange.peer, exchange.sas)
                 .map_err(|_| pairing_io("could not create pairing"))?;
-            self.register(pending.id, exchange.session_id, tls);
+            self.register(pending.id.clone(), exchange.session_id, tls);
+            self.confirm_automatically(&pending.id);
             Ok::<(), ListenerError>(())
         }
         .await;
@@ -1795,7 +1841,28 @@ impl Engine {
         if self.lifecycle() == EngineLifecycle::ShutDown {
             return Err(ListenerError::ShuttingDown);
         }
-        self.pairing.start_outgoing(endpoint, device_name).await
+        self.pairing
+            .start_outgoing(endpoint, device_name, None)
+            .await
+    }
+
+    pub async fn start_automatic_pairing_at_endpoint(
+        &self,
+        endpoint: SocketAddr,
+        device_name: String,
+        expected_device_id: &str,
+        expected_fingerprint: &str,
+    ) -> Result<crate::identity::PendingPairingView, ListenerError> {
+        if self.lifecycle() == EngineLifecycle::ShutDown {
+            return Err(ListenerError::ShuttingDown);
+        }
+        self.pairing
+            .start_outgoing(
+                endpoint,
+                device_name,
+                Some((expected_device_id, expected_fingerprint)),
+            )
+            .await
     }
 
     pub fn confirm_pairing(
@@ -3338,12 +3405,21 @@ mod tests {
         pairing_test_engine().0
     }
     fn pairing_test_engine() -> (Engine, Arc<crate::identity::PairingCoordinator>) {
+        pairing_test_engine_with_automatic(false)
+    }
+
+    fn pairing_test_engine_with_automatic(
+        automatic_device_trust: bool,
+    ) -> (Engine, Arc<crate::identity::PairingCoordinator>) {
         let directory =
             std::env::temp_dir().join(format!("fileporter-engine-test-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&directory).unwrap();
         let repository = std::sync::Arc::new(
             crate::persistence::SettingsRepository::open(directory.join("state.sqlite3")).unwrap(),
         );
+        let mut settings = repository.load().unwrap();
+        settings.automatic_device_trust = automatic_device_trust;
+        repository.save(&settings).unwrap();
         let pairing = Arc::new(crate::identity::PairingCoordinator::open(repository).unwrap());
         (Engine::new(pairing.clone()), pairing)
     }
@@ -3457,6 +3533,106 @@ mod tests {
                 break;
             }
             tokio::task::yield_now().await;
+        }
+        assert_eq!(left_pairing.snapshot().unwrap().trusted_devices.len(), 1);
+        assert_eq!(right_pairing.snapshot().unwrap().trusted_devices.len(), 1);
+        left.shutdown_listener().await;
+        right.shutdown_listener().await;
+    }
+
+    #[tokio::test]
+    async fn two_auto_enabled_peers_trust_after_identity_proof_without_user_confirmation() {
+        let (left, left_pairing) = pairing_test_engine_with_automatic(true);
+        let (right, right_pairing) = pairing_test_engine_with_automatic(true);
+        let endpoint = right
+            .start_listener("127.0.0.1:0".parse().unwrap())
+            .await
+            .unwrap();
+        left.start_pairing_at_endpoint(endpoint, "Left".into())
+            .await
+            .unwrap();
+        for _ in 0..100 {
+            if !left_pairing.snapshot().unwrap().trusted_devices.is_empty()
+                && !right_pairing.snapshot().unwrap().trusted_devices.is_empty()
+            {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        let left_snapshot = left_pairing.snapshot().unwrap();
+        let right_snapshot = right_pairing.snapshot().unwrap();
+        assert!(left_snapshot.pending_pairings.is_empty());
+        assert!(right_snapshot.pending_pairings.is_empty());
+        assert_eq!(left_snapshot.trusted_devices.len(), 1);
+        assert_eq!(right_snapshot.trusted_devices.len(), 1);
+        assert!(left_snapshot.trusted_devices[0].auto_send);
+        assert!(right_snapshot.trusted_devices[0].auto_send);
+        left.shutdown_listener().await;
+        right.shutdown_listener().await;
+    }
+
+    #[tokio::test]
+    async fn automatic_pairing_rejects_an_endpoint_with_a_different_discovered_identity() {
+        let (left, left_pairing) = pairing_test_engine_with_automatic(true);
+        let (right, right_pairing) = pairing_test_engine_with_automatic(true);
+        let endpoint = right
+            .start_listener("127.0.0.1:0".parse().unwrap())
+            .await
+            .unwrap();
+        let (_, right_fingerprint) = right_pairing.discovery_identity();
+        assert!(left
+            .start_automatic_pairing_at_endpoint(
+                endpoint,
+                "Left".into(),
+                "different-device-id",
+                &right_fingerprint,
+            )
+            .await
+            .is_err());
+        for _ in 0..16 {
+            tokio::task::yield_now().await;
+        }
+        assert!(left_pairing.snapshot().unwrap().trusted_devices.is_empty());
+        assert!(right_pairing.snapshot().unwrap().trusted_devices.is_empty());
+        left.shutdown_listener().await;
+        right.shutdown_listener().await;
+    }
+
+    #[tokio::test]
+    async fn confirmation_required_peer_prevents_automatic_trust_until_it_confirms() {
+        let (left, left_pairing) = pairing_test_engine_with_automatic(true);
+        let (right, right_pairing) = pairing_test_engine_with_automatic(false);
+        let endpoint = right
+            .start_listener("127.0.0.1:0".parse().unwrap())
+            .await
+            .unwrap();
+        left.start_pairing_at_endpoint(endpoint, "Left".into())
+            .await
+            .unwrap();
+        let right_pending = loop {
+            if let Some(pending) = right_pairing
+                .snapshot()
+                .unwrap()
+                .pending_pairings
+                .into_iter()
+                .next()
+            {
+                if pending.remote_confirmed {
+                    break pending;
+                }
+            }
+            tokio::task::yield_now().await;
+        };
+        assert!(left_pairing.snapshot().unwrap().trusted_devices.is_empty());
+        assert!(right_pairing.snapshot().unwrap().trusted_devices.is_empty());
+        right.confirm_pairing(&right_pending.id).unwrap();
+        for _ in 0..100 {
+            if !left_pairing.snapshot().unwrap().trusted_devices.is_empty()
+                && !right_pairing.snapshot().unwrap().trusted_devices.is_empty()
+            {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
         }
         assert_eq!(left_pairing.snapshot().unwrap().trusted_devices.len(), 1);
         assert_eq!(right_pairing.snapshot().unwrap().trusted_devices.len(), 1);

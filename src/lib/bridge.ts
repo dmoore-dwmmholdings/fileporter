@@ -10,8 +10,9 @@ export interface CompleteOnboardingInput {
   receiveDirectory: string;
   launchAtLogin?: boolean;
   notificationsEnabled?: boolean;
+  automaticDeviceTrust?: boolean;
 }
-export interface UpdateSettingsInput { deviceName?: string; receiveDirectory?: string; receivingEnabled?: boolean; listenAddress?: string; launchAtLogin?: boolean; notificationsEnabled?: boolean; historyRetentionDays?: 0 | 7 | 30 | 90; }
+export interface UpdateSettingsInput { deviceName?: string; receiveDirectory?: string; receivingEnabled?: boolean; listenAddress?: string; launchAtLogin?: boolean; notificationsEnabled?: boolean; automaticDeviceTrust?: boolean; historyRetentionDays?: 0 | 7 | 30 | 90; }
 export interface RequestPairingInput { remoteName: string; publicKey: number[]; certificateFingerprint: string; }
 export interface StartPairingAtEndpointInput { endpoint: string; }
 export interface PairingConfirmation { pairing: PendingPairing; trustedDevice: TrustedDevice | null; }

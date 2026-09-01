@@ -18,6 +18,8 @@ const NOTIFICATION_LEDGER_MIGRATION: &str =
     include_str!("../migrations/0009_notification_ledger.sql");
 const OS_SECRET_STORE_MIGRATION: &str = include_str!("../migrations/0010_os_secret_store.sql");
 const SETTINGS_CONTRACT_MIGRATION: &str = include_str!("../migrations/0011_settings_contract.sql");
+const AUTOMATIC_DEVICE_TRUST_MIGRATION: &str =
+    include_str!("../migrations/0012_automatic_device_trust.sql");
 
 const BUSY_TIMEOUT_MS: u64 = 5_000;
 pub(crate) type LegacyTlsCredentials = (Vec<u8>, Vec<u8>);
@@ -118,6 +120,9 @@ pub struct Settings {
     pub listen_address: String,
     pub launch_at_login: bool,
     pub notifications_enabled: bool,
+    /// Trust authenticated Fileporter identities discovered on the local network
+    /// without requiring a human comparison-code confirmation.
+    pub automatic_device_trust: bool,
     /// 0 means keep history forever; positive values are the documented days.
     pub history_retention_days: i64,
 }
@@ -131,6 +136,7 @@ impl Default for Settings {
             listen_address: "127.0.0.1:0".into(),
             launch_at_login: true,
             notifications_enabled: true,
+            automatic_device_trust: true,
             history_retention_days: 30,
         }
     }
@@ -167,14 +173,14 @@ impl SettingsRepository {
             .connection
             .lock()
             .expect("settings repository mutex poisoned");
-        connection.query_row("SELECT device_name, receive_directory, onboarding_complete, receiving_enabled, listen_address, launch_at_login, notifications_enabled, history_retention_days FROM settings WHERE singleton = 1", [], |row| Ok(Settings { device_name: row.get(0)?, receive_directory: row.get(1)?, onboarding_complete: row.get::<_, i64>(2)? != 0, receiving_enabled: row.get::<_, i64>(3)? != 0, listen_address: row.get(4)?, launch_at_login: row.get::<_, i64>(5)? != 0, notifications_enabled: row.get::<_, i64>(6)? != 0, history_retention_days: row.get(7)? })).optional().map_err(AppError::Database)?.ok_or_else(|| AppError::Database(rusqlite::Error::QueryReturnedNoRows))
+        connection.query_row("SELECT device_name, receive_directory, onboarding_complete, receiving_enabled, listen_address, launch_at_login, notifications_enabled, history_retention_days, automatic_device_trust FROM settings WHERE singleton = 1", [], |row| Ok(Settings { device_name: row.get(0)?, receive_directory: row.get(1)?, onboarding_complete: row.get::<_, i64>(2)? != 0, receiving_enabled: row.get::<_, i64>(3)? != 0, listen_address: row.get(4)?, launch_at_login: row.get::<_, i64>(5)? != 0, notifications_enabled: row.get::<_, i64>(6)? != 0, history_retention_days: row.get(7)?, automatic_device_trust: row.get::<_, i64>(8)? != 0 })).optional().map_err(AppError::Database)?.ok_or_else(|| AppError::Database(rusqlite::Error::QueryReturnedNoRows))
     }
     pub fn save(&self, settings: &Settings) -> Result<(), AppError> {
         let connection = self
             .connection
             .lock()
             .expect("settings repository mutex poisoned");
-        connection.execute("UPDATE settings SET device_name = ?1, receive_directory = ?2, onboarding_complete = ?3, receiving_enabled = ?4, listen_address = ?5, launch_at_login = ?6, notifications_enabled = ?7, history_retention_days = ?8, revision = revision + 1, updated_at = CURRENT_TIMESTAMP WHERE singleton = 1", rusqlite::params![settings.device_name, settings.receive_directory, settings.onboarding_complete as i64, settings.receiving_enabled as i64, settings.listen_address, settings.launch_at_login as i64, settings.notifications_enabled as i64, settings.history_retention_days]).map_err(AppError::Database)?;
+        connection.execute("UPDATE settings SET device_name = ?1, receive_directory = ?2, onboarding_complete = ?3, receiving_enabled = ?4, listen_address = ?5, launch_at_login = ?6, notifications_enabled = ?7, history_retention_days = ?8, automatic_device_trust = ?9, revision = revision + 1, updated_at = CURRENT_TIMESTAMP WHERE singleton = 1", rusqlite::params![settings.device_name, settings.receive_directory, settings.onboarding_complete as i64, settings.receiving_enabled as i64, settings.listen_address, settings.launch_at_login as i64, settings.notifications_enabled as i64, settings.history_retention_days, settings.automatic_device_trust as i64]).map_err(AppError::Database)?;
         Ok(())
     }
 
@@ -820,6 +826,17 @@ fn apply_migrations(connection: &mut Connection) -> Result<(), AppError> {
             )
             .map_err(AppError::Database)?;
     }
+    if version < 12 {
+        transaction
+            .execute_batch(AUTOMATIC_DEVICE_TRUST_MIGRATION)
+            .map_err(AppError::Database)?;
+        transaction
+            .execute(
+                "UPDATE schema_metadata SET value = '12' WHERE key = 'migration_version'",
+                [],
+            )
+            .map_err(AppError::Database)?;
+    }
     transaction.commit().map_err(AppError::Database)
 }
 
@@ -918,7 +935,8 @@ mod tests {
         let repo = SettingsRepository::open(d.path().join("settings.sqlite3")).unwrap();
         assert_eq!(repo.load().unwrap(), Settings::default());
         assert_eq!(repo.load().unwrap().history_retention_days, 30);
-        assert_eq!(repo.migration_version().unwrap(), 11);
+        assert!(repo.load().unwrap().automatic_device_trust);
+        assert_eq!(repo.migration_version().unwrap(), 12);
     }
     #[test]
     fn settings_updates_survive_reopening() {
@@ -928,6 +946,7 @@ mod tests {
         let value = Settings {
             device_name: "Studio Mac".into(),
             onboarding_complete: true,
+            automatic_device_trust: false,
             ..Settings::default()
         };
         repo.save(&value).unwrap();
@@ -1013,7 +1032,7 @@ mod tests {
                     |row| row.get::<_, String>(0),
                 )
                 .unwrap(),
-            "11"
+            "12"
         );
         drop(connection);
         assert_eq!(reopened.trusted_peer(&peer.device_id).unwrap(), Some(peer));
@@ -1059,7 +1078,7 @@ mod tests {
                     |row| row.get::<_, String>(0),
                 )
                 .unwrap(),
-            "11"
+            "12"
         );
     }
 

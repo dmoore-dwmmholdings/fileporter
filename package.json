@@ -1,6 +1,6 @@
 {
   "name": "fileporter",
-  "description": "Private, direct local-network file transfer for explicitly paired devices.",
+  "description": "Private, direct file transfer between automatically discovered local-network devices.",
   "private": true,
   "version": "0.1.0",
   "type": "module",

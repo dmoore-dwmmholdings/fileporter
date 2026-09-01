@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -34,6 +34,7 @@ pub struct AppState {
     scheduler: Arc<SenderScheduler>,
     events: StateEvents,
     event_worker: Arc<Mutex<Option<StateEventWorker>>>,
+    automatic_pairing_inflight: Arc<Mutex<HashSet<String>>>,
 }
 
 struct SenderScheduler {
@@ -84,6 +85,7 @@ pub struct SettingsSnapshot {
     pub onboarding_complete: bool,
     pub launch_at_login: bool,
     pub notifications_enabled: bool,
+    pub automatic_device_trust: bool,
     pub receiving_enabled: bool,
     pub preferred_listen_address: String,
     pub preferred_listen_port: u16,
@@ -273,6 +275,7 @@ impl AppState {
             }),
             events,
             event_worker: Arc::new(Mutex::new(None)),
+            automatic_pairing_inflight: Arc::new(Mutex::new(HashSet::new())),
         })
     }
     pub fn snapshot(&self, window_visible: bool) -> Result<AppSnapshot, crate::error::AppError> {
@@ -390,6 +393,7 @@ impl AppState {
         for device_id in self.discovery.refresh(&self.settings, unix_now()) {
             self.wake_waiting_peer(&device_id)?;
         }
+        self.start_automatic_pairings();
         Ok(())
     }
     /// Applies persisted listener preferences without claiming discovery or
@@ -444,6 +448,7 @@ impl AppState {
         for device_id in observed {
             self.wake_waiting_peer(&device_id)?;
         }
+        self.start_automatic_pairings();
         Ok(())
     }
     /// Final shutdown always waits for the listener socket and its child work.
@@ -508,6 +513,7 @@ impl AppState {
                 for device_id in state.discovery.refresh(&state.settings, unix_now()) {
                     let _ = state.wake_waiting_peer(&device_id);
                 }
+                state.start_automatic_pairings();
                 let candidates = state.settings.outgoing_batches().unwrap_or_default();
                 for record in candidates {
                     if state.scheduler.cancellation.is_cancelled() {
@@ -571,6 +577,129 @@ impl AppState {
             .task
             .lock()
             .expect("sender scheduler mutex poisoned") = Some(task);
+    }
+
+    /// Starts authenticated trust-on-first-discovery exchanges in the
+    /// background. The lexically smaller identity goes first; the other side
+    /// waits briefly and acts only as a fallback for asymmetric discovery.
+    fn start_automatic_pairings(&self) {
+        let Ok(settings) = self.settings.load() else {
+            return;
+        };
+        if !settings.onboarding_complete
+            || !settings.receiving_enabled
+            || !settings.automatic_device_trust
+        {
+            return;
+        }
+        let (local_device_id, _) = self.pairing.discovery_identity();
+        for candidate in self.discovery.nearby() {
+            let device_id = candidate.record.device_id.clone();
+            if self
+                .settings
+                .trusted_peer(&device_id)
+                .map(|peer| peer.is_some())
+                .unwrap_or(true)
+                || self
+                    .pairing
+                    .snapshot()
+                    .map(|snapshot| {
+                        snapshot
+                            .pending_pairings
+                            .iter()
+                            .any(|pairing| pairing.device_id == device_id)
+                    })
+                    .unwrap_or(true)
+            {
+                continue;
+            }
+            {
+                let mut inflight = self
+                    .automatic_pairing_inflight
+                    .lock()
+                    .expect("automatic pairing mutex poisoned");
+                if !inflight.insert(device_id.clone()) {
+                    continue;
+                }
+            }
+            let state = self.clone();
+            let preferred_initiator = local_device_id < device_id;
+            tokio::spawn(async move {
+                if !preferred_initiator {
+                    tokio::time::sleep(std::time::Duration::from_millis(750)).await;
+                }
+                let should_connect = state
+                    .settings
+                    .load()
+                    .map(|value| value.automatic_device_trust)
+                    .unwrap_or(false)
+                    && state
+                        .settings
+                        .trusted_peer(&device_id)
+                        .map(|peer| peer.is_none())
+                        .unwrap_or(false)
+                    && state
+                        .pairing
+                        .snapshot()
+                        .map(|snapshot| {
+                            !snapshot
+                                .pending_pairings
+                                .iter()
+                                .any(|pairing| pairing.device_id == device_id)
+                        })
+                        .unwrap_or(false);
+                if should_connect {
+                    let local_name = state
+                        .settings
+                        .load()
+                        .map(|value| value.device_name)
+                        .unwrap_or_default();
+                    if state
+                        .engine
+                        .start_automatic_pairing_at_endpoint(
+                            candidate.record.endpoint,
+                            local_name,
+                            &candidate.record.device_id,
+                            &candidate.record.certificate_fingerprint,
+                        )
+                        .await
+                        .is_ok()
+                    {
+                        for _ in 0..50 {
+                            let trusted = state
+                                .settings
+                                .trusted_peer(&device_id)
+                                .ok()
+                                .flatten()
+                                .is_some_and(|peer| {
+                                    peer.revoked_at.is_none()
+                                        && peer.certificate_fingerprint.eq_ignore_ascii_case(
+                                            &candidate.record.certificate_fingerprint,
+                                        )
+                                });
+                            if trusted {
+                                if state.discovery.promote_trusted(
+                                    &device_id,
+                                    &state.settings,
+                                    unix_now(),
+                                ) {
+                                    let _ = state.wake_waiting_peer(&device_id);
+                                    state.bump_revision();
+                                    state.events.emit(StateEventKind::Progress);
+                                }
+                                break;
+                            }
+                            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                        }
+                    }
+                }
+                state
+                    .automatic_pairing_inflight
+                    .lock()
+                    .expect("automatic pairing mutex poisoned")
+                    .remove(&device_id);
+            });
+        }
     }
     pub fn cancel_batch(&self, batch_id: &str) -> Result<(), crate::error::AppError> {
         if let Some(token) = self
@@ -1339,6 +1468,7 @@ fn snapshot_from_settings(
             onboarding_complete: settings.onboarding_complete,
             launch_at_login: settings.launch_at_login,
             notifications_enabled: settings.notifications_enabled,
+            automatic_device_trust: settings.automatic_device_trust,
             receiving_enabled: settings.receiving_enabled,
             preferred_listen_port,
             preferred_listen_address: preferred_listen_address.clone(),

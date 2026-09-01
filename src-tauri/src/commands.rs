@@ -48,6 +48,8 @@ pub struct CompleteOnboardingInput {
     pub launch_at_login: Option<bool>,
     #[serde(default)]
     pub notifications_enabled: Option<bool>,
+    #[serde(default)]
+    pub automatic_device_trust: Option<bool>,
 }
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -64,6 +66,8 @@ pub struct UpdateSettingsInput {
     pub launch_at_login: Option<bool>,
     #[serde(default)]
     pub notifications_enabled: Option<bool>,
+    #[serde(default)]
+    pub automatic_device_trust: Option<bool>,
     #[serde(default)]
     pub history_retention_days: Option<i64>,
 }
@@ -231,6 +235,9 @@ pub async fn complete_onboarding(
     }
     if let Some(value) = input.notifications_enabled {
         settings.notifications_enabled = value;
+    }
+    if let Some(value) = input.automatic_device_trust {
+        settings.automatic_device_trust = value;
     }
     let autostart = TauriLaunchAtLogin(app.clone());
     apply_launch_at_login(&autostart, settings.launch_at_login).map_err(AppErrorDto::from)?;
@@ -661,6 +668,9 @@ pub fn apply_settings_patch(
     if let Some(value) = input.notifications_enabled {
         settings.notifications_enabled = value;
     }
+    if let Some(value) = input.automatic_device_trust {
+        settings.automatic_device_trust = value;
+    }
     if let Some(days) = input.history_retention_days {
         validate_history_retention(days)?;
         settings.history_retention_days = days;
@@ -713,12 +723,15 @@ mod tests {
     }
     #[test]
     fn settings_patch_matches_camel_case_input() {
-        let patch: UpdateSettingsInput =
-            serde_json::from_str(r#"{"deviceName":"Office PC","receivingEnabled":false}"#).unwrap();
+        let patch: UpdateSettingsInput = serde_json::from_str(
+            r#"{"deviceName":"Office PC","receivingEnabled":false,"automaticDeviceTrust":false}"#,
+        )
+        .unwrap();
         let mut settings = Settings::default();
         apply_settings_patch(&mut settings, patch).unwrap();
         assert_eq!(settings.device_name, "Office PC");
         assert!(!settings.receiving_enabled);
+        assert!(!settings.automatic_device_trust);
     }
     #[test]
     fn settings_patch_accepts_only_documented_history_retention_values() {

@@ -16,7 +16,7 @@ Fileporter remains available after its main window is closed. It runs as a per-u
 
 ### 1.1 Product promise
 
-After a one-time setup and one-time pairing between machines:
+After one-time setup, Fileporter machines on the same private network find and remember each other automatically:
 
 1. Drop a file or directory onto Fileporter.
 2. Every trusted device that is online receives it automatically.
@@ -25,7 +25,7 @@ After a one-time setup and one-time pairing between machines:
 ### 1.2 Definitions
 
 - **Device**: one Fileporter installation and its stable cryptographic identity.
-- **Trusted device**: a device whose identity was explicitly confirmed during pairing and has not been revoked.
+- **Trusted device**: a device whose identity was authenticated and mutually confirmed automatically or by matching-code confirmation, and has not been revoked.
 - **Online device**: a trusted device currently discovered by mDNS or reachable at a saved manual private-network address.
 - **Connected device**: a trusted, online device with a recently authenticated connection or successful health check.
 - **Batch**: one user action containing one or more top-level files/directories.
@@ -40,7 +40,7 @@ These decisions remove ambiguity and are requirements unless the user changes th
 - The Home screen also permits deselecting individual online devices before a drop. “All online” is the default on every launch.
 - If no device is online, dropped/selected items remain staged in the UI and are not silently queued to every offline device. The UI offers “Send when available” explicitly.
 - Trusted receivers auto-accept. Unknown or revoked devices can never offer files.
-- Pairing is a one-time, mutual, human-confirmed operation with a matching short authentication code on both machines. Being on the same LAN alone does not create trust.
+- Authenticated trust-on-first-discovery is the default: both devices prove possession of their advertised identities and mutually confirm over the encrypted pairing channel. Users can require human matching-code confirmation in Settings for hostile or shared LANs.
 - An interrupted in-progress transfer is durably resumable while the source paths still exist and have not changed.
 - Existing destination content is never overwritten. Name collisions create a numbered copy.
 - v1 transfers regular files and directories, including empty directories and hidden files. Symlinks, Windows junctions/reparse points, sockets, devices, FIFOs, ACLs, extended attributes, resource forks, sparse-file structure, and hard-link identity are not preserved. Unsupported entries are skipped and reported.
@@ -53,7 +53,7 @@ These decisions remove ambiguity and are requirements unless the user changes th
 
 ### 3.1 Goals
 
-- A first-time user can configure a receive directory and pair two machines without reading documentation.
+- A first-time user can configure a receive directory and have two machines discover and trust each other without reading documentation.
 - A returning user can send files or complete directory trees with a single drag/drop.
 - Closing the window does not stop discovery, receiving, sending, or resume.
 - One sender can fan out the same batch to multiple peers concurrently.
@@ -107,22 +107,22 @@ The main window must open on first launch even when launched with `--background`
    - Show actionable recovery instructions when access is denied or discovery cannot start.
 5. **Run in background**
    - “Launch Fileporter when I sign in” defaults on and can be disabled.
-6. **Pair another device**
-   - Show discovered unpaired devices and “Add by address.”
-   - This step can be skipped.
+6. **Automatic discovery**
+   - Finish onboarding directly; nearby Fileporter devices appear automatically.
+   - Keep a private-address fallback for networks that block multicast.
 
 Persist onboarding completion only after a valid receive directory is chosen. If onboarding is abandoned, background auto-start must not create an invisible, nonfunctional process.
 
-### 5.2 Pairing flow
+### 5.2 Automatic trust and confirmation-required flow
 
-1. Device A shows Device B under Nearby devices. A clicks Pair.
-2. B receives a visible pairing request containing A's friendly name and operating-system icon. No transfer is possible yet.
-3. Both show the same six-digit authentication code derived from the authenticated pairing transcript.
-4. Both users click “Codes match” (or the same user confirms on each personal computer).
-5. Each side stores the other's pinned identity and certificate fingerprint.
-6. Both show as trusted and connected. Future sessions authenticate automatically.
+1. Both devices advertise and discover each other on the private LAN.
+2. A deterministic initiator opens the limited pairing TLS channel. The endpoint must present the exact identity and certificate fingerprint from discovery.
+3. Both sides exchange fresh nonces and signed transcript proofs. No transfer is possible yet.
+4. With automatic trust enabled on both sides, authenticated `PairConfirmed` frames are exchanged without UI and each side stores the other's pin.
+5. If either side requires confirmation, both show the same six-digit authentication code and trust commits only after the stricter side confirms.
+6. Both show as trusted and connected. Future sessions authenticate against the stored pins.
 
-Provide Reject, Cancel, a 120-second expiry, and rate limiting. Never offer a “trust everyone on this network” setting.
+Provide Reject, Cancel, a 120-second expiry, rate limiting, and a Settings control to require matching-code confirmation. Automatic mode is authenticated TOFU, not proof of ownership; clearly advise using confirmation-required mode on shared or hostile networks.
 
 ### 5.3 Home screen
 
@@ -353,7 +353,7 @@ Only an explicit Quit exits. Window close, Escape, or clicking the dock/taskbar 
 - Direct TCP protected by TLS 1.3 using Rustls/Tokio-Rustls.
 - Both peers present their device certificate.
 - For a trusted connection, the custom verifier must require an exact pinned identity/certificate binding and prove possession of the private key. Never globally disable certificate verification.
-- For an explicit, unexpired pairing session, an unknown self-signed device certificate may proceed only into the limited pairing state machine. No offer, manifest, path, or chunk frame is accepted until trust is committed.
+- For an automatic-discovery or explicit, unexpired pairing session, an unknown self-signed device certificate may proceed only into the limited pairing state machine. No offer, manifest, path, or chunk frame is accepted until trust is committed.
 - Negotiate ALPN `fileporter/1`.
 - Refuse TLS versions below 1.3, invalid signatures, changed pins, replayed session nonces, and protocol downgrades.
 
@@ -361,11 +361,11 @@ Only an explicit Quit exits. Window close, Escape, or clicking the dock/taskbar 
 
 The pairing state machine must include fresh 256-bit nonces from both sides and a transcript containing protocol version, both full public keys, both certificate fingerprints, both device IDs, both nonces, and initiator/responder roles. Both devices sign the canonical transcript.
 
-The six-digit authentication code is derived from a domain-separated cryptographic hash of the canonical signed transcript, reduced without modulo bias. Display it as `123 456`. Trust is written only after:
+The six-digit authentication code is derived from a domain-separated cryptographic hash of the canonical signed transcript, reduced without modulo bias. Display it as `123 456` when confirmation-required mode is active. Trust is written only after:
 
 - both signatures verify,
-- both sides signal human confirmation,
-- the codes match by human inspection,
+- both sides send authenticated confirmation frames, automatically or after local human confirmation according to each device's setting,
+- when confirmation is required, the codes match by human inspection,
 - the session has not expired, and
 - peer identity is not already pinned differently.
 
@@ -373,7 +373,7 @@ Commit trust transactionally. If either side rejects/times out, erase the pendin
 
 ### 10.4 Revocation
 
-Forgetting a device removes its trust pin, closes active sessions, cancels or pauses targets for that peer, and prevents automatic repair. The remote device remains untrusted until paired again. A changed identity under the same friendly name must be surfaced as a different device, never silently accepted.
+Forgetting a device revokes its trust pin while retaining a durable deny record, closes active sessions, cancels or pauses targets for that peer, and prevents automatic repair. The remote device remains untrusted. A changed identity under the same friendly name must be surfaced as a different device, never silently accepted.
 
 ## 11. Wire protocol
 
@@ -609,7 +609,7 @@ Assume the LAN contains a curious or malicious untrusted device. Also assume a p
 
 Required controls:
 
-- Mutual cryptographic identity, pinning, explicit pairing, SAS comparison, and revocation.
+- Mutual cryptographic identity, pinning, authenticated automatic first trust, optional SAS comparison, and revocation.
 - TLS 1.3 encryption and transcript/session signatures.
 - Strict network-scope policy and no Internet discovery/relay.
 - State-machine validation for every wire message.
@@ -775,7 +775,7 @@ Each milestone ends with tests and a runnable vertical slice. Do not postpone al
 
 Fileporter v1 is complete only when all of these are true:
 
-1. Fresh installs on two supported machines can complete onboarding, discover one another on a normal LAN, pair with matching codes, and reconnect without re-pairing.
+1. Fresh installs on two supported machines can complete onboarding, discover and mutually trust one another without pairing UI on a normal private LAN, and reconnect without repeating first trust; confirmation-required mode also works with matching codes.
 2. Dropping one or more files and complete directories sends them without another confirmation to every selected trusted online peer.
 3. When both machines' main windows are closed but Fileporter remains in the tray/menu bar, an incoming transfer is accepted, saved, and notified.
 4. Selected receive directories are honored. Existing files/directories are never overwritten or merged.
