@@ -5,6 +5,7 @@ import { StatusPill } from './components/StatusPill';
 import { DevicesView } from './components/DevicesView';
 import { ActivityView } from './components/ActivityView';
 import { appBridge } from './lib/bridge';
+import { formatPeer, formatWhen } from './lib/format';
 import { emptySnapshot, toViewModel, type AppSnapshotViewModel, type BackendAppSnapshot } from './types/view-models';
 
 export interface FileporterAppProps { initialSnapshot?: AppSnapshotViewModel; }
@@ -23,7 +24,11 @@ export default function App({ initialSnapshot = emptySnapshot }: FileporterAppPr
   const cancelNoticeRef = useRef<HTMLButtonElement>(null);
   const selectedIdsRef = useRef(selectedDeviceIds);
   const dragDepthRef = useRef(0);
-  const recipientsInitializedRef = useRef(initialSnapshot.revision > 0);
+  // Recipients follow whoever is online until the user picks for themselves.
+  // Capturing them once meant a launch that finished before discovery did left
+  // the selection permanently empty, and every drop asked for a device instead
+  // of sending.
+  const recipientsChosenRef = useRef(false);
   selectedIdsRef.current = selectedDeviceIds;
   const connectedDevices = useMemo(() => snapshot.devices.filter((device) => device.state === 'online'), [snapshot]);
   const offlineTrustedDevices = useMemo(() => snapshot.trustedDevices.filter((device) => device.state === 'offline'), [snapshot]);
@@ -39,8 +44,7 @@ export default function App({ initialSnapshot = emptySnapshot }: FileporterAppPr
     if (incoming.revision <= revisionRef.current) return;
     revisionRef.current = incoming.revision;
     setSnapshot(toViewModel(incoming));
-    if (!recipientsInitializedRef.current) {
-      recipientsInitializedRef.current = true;
+    if (!recipientsChosenRef.current) {
       setSelectedDeviceIds((incoming.devices ?? []).filter((device) => device.state === 'online').map((device) => device.id));
     }
     setLoadState('ready');
@@ -53,8 +57,7 @@ export default function App({ initialSnapshot = emptySnapshot }: FileporterAppPr
       if (incoming.revision >= revisionRef.current) {
         revisionRef.current = incoming.revision;
         setSnapshot(toViewModel(incoming));
-        if (!recipientsInitializedRef.current) {
-          recipientsInitializedRef.current = true;
+        if (!recipientsChosenRef.current) {
           setSelectedDeviceIds((incoming.devices ?? []).filter((device) => device.state === 'online').map((device) => device.id));
         }
       }
@@ -119,6 +122,7 @@ export default function App({ initialSnapshot = emptySnapshot }: FileporterAppPr
   }, [submitPaths]);
 
   function toggleDevice(id: string) {
+    recipientsChosenRef.current = true;
     setSelectedDeviceIds((selected) => selected.includes(id) ? selected.filter((value) => value !== id) : [...selected, id]);
   }
 
@@ -159,7 +163,7 @@ export default function App({ initialSnapshot = emptySnapshot }: FileporterAppPr
         <span className="eyebrow">SEND TO</span>
         {connectedDevices.length > 0 ? (
           <>
-            <button type="button" className={selectedDeviceIds.length === connectedDevices.length ? 'recipient active' : 'recipient'} onClick={() => setSelectedDeviceIds(selectedDeviceIds.length === connectedDevices.length ? [] : connectedDevices.map((device) => device.id))}>All online ({connectedDevices.length})</button>
+            <button type="button" className={selectedDeviceIds.length === connectedDevices.length ? 'recipient active' : 'recipient'} onClick={() => { recipientsChosenRef.current = true; setSelectedDeviceIds(selectedDeviceIds.length === connectedDevices.length ? [] : connectedDevices.map((device) => device.id)); }}>All online ({connectedDevices.length})</button>
             {connectedDevices.map((device) => <button key={device.id} type="button" className={selectedDeviceIds.includes(device.id) ? 'recipient active' : 'recipient'} onClick={() => toggleDevice(device.id)}>{device.name}</button>)}
           </>
         ) : <span className="offline-copy"><WifiOff size={15} aria-hidden="true" /> No devices online</span>}
@@ -178,7 +182,7 @@ export default function App({ initialSnapshot = emptySnapshot }: FileporterAppPr
       {selectedDeviceIds.length === 0 && stagedPaths.length === 0 && <section className="empty-targets" aria-live="polite"><strong>Looking for Fileporter devices…</strong><span>Other computers on this private network will appear automatically.</span></section>}
 
       {snapshot.transfers.length > 0 && <section className="activity-section"><h2>Sending</h2>{snapshot.transfers.map((batch) => <article className="transfer-card" key={batch.id}><div><strong>{batch.label}</strong><StatusPill state={batch.state} /></div><progress value={batch.progress} max="100">{batch.progress}%</progress>{batch.targets.map((target) => <div className="target-row" key={target.id}><span>{target.deviceName}</span><span>{target.rateLabel ?? ''}</span><StatusPill state={target.state} /></div>)}</article>)}</section>}
-      <section className="activity-section"><h2>Recent activity</h2>{snapshot.history.length ? snapshot.history.map((item) => <article className="history-row" key={item.id}><span>{item.direction === 'incoming' ? 'Received from' : 'Sent to'} {item.peerName}</span><span>{item.summary}</span><span>{item.timeLabel}</span><StatusPill state={item.state} /></article>) : <p className="muted">Transfers you send and receive will appear here.</p>}</section>
+      <section className="activity-section"><h2>Recent activity</h2>{snapshot.history.length ? snapshot.history.map((item) => <article className="history-row" key={item.id}><span>{item.direction === 'incoming' ? 'Received from' : 'Sent to'} {formatPeer(item.peerName, snapshot.trustedDevices)}</span><span>{item.summary}</span><span>{formatWhen(item.timeLabel)}</span><StatusPill state={item.state} /></article>) : <p className="muted">Transfers you send and receive will appear here.</p>}</section>
     </div></AppFrame>
   );
 }

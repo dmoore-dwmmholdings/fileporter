@@ -36,6 +36,44 @@ it('shows an actionable error when snapshot loading fails', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('Fileporter couldn’t load.');
 });
 
+it('sends to a device that only comes online after launch, without asking first', async () => {
+  // The app almost always finishes loading before discovery finds anyone, so a
+  // recipient set captured once at startup is empty forever and every drop is
+  // met with "choose a device" instead of a transfer.
+  let receiveSnapshot: ((snapshot: BackendAppSnapshot) => void) | undefined;
+  vi.spyOn(appBridge, 'listenForSnapshotChanges').mockImplementation(async (handler) => { receiveSnapshot = handler; return () => undefined; });
+  vi.spyOn(appBridge, 'getAppSnapshot').mockResolvedValue(readySnapshot);
+  vi.spyOn(appBridge, 'chooseFiles').mockResolvedValue(['C:\\report.pdf']);
+  const enqueue = vi.spyOn(appBridge, 'enqueuePaths').mockResolvedValue({ id: 'batch-1', itemCount: 1, targetDeviceIds: ['peer-1'], state: 'queued', waitingForAvailable: false });
+  render(<App />);
+  expect(await screen.findByText('No devices online')).toBeVisible();
+
+  await act(async () => {
+    receiveSnapshot?.({ ...readySnapshot, revision: 3, devices: [{ id: 'peer-1', name: 'DWMM Gaming', state: 'online', lastSeenAt: 10 }] });
+  });
+  expect(await screen.findByRole('button', { name: 'DWMM Gaming' })).toBeVisible();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Send something' }));
+  fireEvent.click(await screen.findByRole('menuitem', { name: /Browse files/ }));
+
+  await waitFor(() => expect(enqueue).toHaveBeenCalledWith(['C:\\report.pdf'], ['peer-1']));
+});
+
+it('keeps a recipient the user deselected even as snapshots arrive', async () => {
+  let receiveSnapshot: ((snapshot: BackendAppSnapshot) => void) | undefined;
+  vi.spyOn(appBridge, 'listenForSnapshotChanges').mockImplementation(async (handler) => { receiveSnapshot = handler; return () => undefined; });
+  vi.spyOn(appBridge, 'getAppSnapshot').mockResolvedValue({ ...readySnapshot, devices: [{ id: 'peer-1', name: 'DWMM Gaming', state: 'online', lastSeenAt: 10 }] });
+  render(<App />);
+  const chip = await screen.findByRole('button', { name: 'DWMM Gaming' });
+  fireEvent.click(chip);
+
+  await act(async () => {
+    receiveSnapshot?.({ ...readySnapshot, revision: 4, devices: [{ id: 'peer-1', name: 'DWMM Gaming', state: 'online', lastSeenAt: 12 }] });
+  });
+
+  expect(screen.getByRole('button', { name: 'DWMM Gaming' }).className).not.toContain('active');
+});
+
 it('discards an older snapshot event after a newer snapshot', async () => {
   let receiveSnapshot: ((snapshot: BackendAppSnapshot) => void) | undefined;
   vi.spyOn(appBridge, 'listenForSnapshotChanges').mockImplementation(async (handler) => { receiveSnapshot = handler; return () => undefined; });

@@ -9,6 +9,7 @@ use std::{
     collections::{HashMap, VecDeque},
     net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket},
     sync::Mutex,
+    time::{Duration, Instant},
 };
 
 use flume::Receiver;
@@ -22,8 +23,17 @@ use crate::{
 pub const SERVICE_TYPE: &str = "_fileporter._tcp.local.";
 pub const PROTOCOL_VERSION: u16 = 1;
 pub const CAPABILITIES: &[&str] = &["receive-v1", "pairing-v1"];
-pub const PRESENCE_TTL_SECS: i64 = 90;
+/// Backstop only. Reachability probing is what moves a trusted peer offline;
+/// this bounds a peer whose prober stopped running.
+pub const PRESENCE_TTL_SECS: i64 = 45;
 const MAX_NEARBY_CANDIDATES: usize = 64;
+/// `mdns-sd` retransmits a browse with a delay that doubles up to an hour, so a
+/// long-running app stops noticing devices that appear later. Restarting the
+/// browse resets that backoff and replays the daemon cache. This is how new
+/// devices are *found*; it is deliberately not how liveness is decided, because
+/// resolution cadence is governed by record TTLs far longer than any presence
+/// window worth showing a user.
+const REBROWSE_AFTER: Duration = Duration::from_secs(60);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiscoveryRecord {
@@ -72,6 +82,22 @@ pub trait DiscoveryAdapter: Send {
     fn publish(&mut self, record: &DiscoveryRecord) -> Result<(), String>;
     fn withdraw(&mut self) -> Result<(), String>;
     fn browse(&mut self) -> Result<Vec<DiscoveryRecord>, String>;
+    /// Device ids the transport reported as gone since the last call. A
+    /// graceful peer shutdown sends a goodbye, which is far faster than
+    /// waiting for a record to age out.
+    fn departed(&mut self) -> Vec<String> {
+        Vec::new()
+    }
+}
+
+/// Instances are published as `fileporter-<device id>`; recover the id from
+/// the instance or fullname a removal event carries.
+fn device_id_from_instance(name: &str) -> Option<String> {
+    let instance = name.split('.').next().unwrap_or(name);
+    instance
+        .strip_prefix("fileporter-")
+        .filter(|id| !id.is_empty())
+        .map(str::to_owned)
 }
 
 /// Production wiring point for the platform mDNS implementation. It is kept
@@ -80,6 +106,8 @@ pub struct MdnsDiscoveryAdapter {
     daemon: Option<ServiceDaemon>,
     events: Option<Receiver<ServiceEvent>>,
     fullname: Option<String>,
+    departed: Vec<String>,
+    browsing_since: Option<Instant>,
 }
 impl MdnsDiscoveryAdapter {
     pub fn new() -> Self {
@@ -87,6 +115,8 @@ impl MdnsDiscoveryAdapter {
             daemon: None,
             events: None,
             fullname: None,
+            departed: Vec::new(),
+            browsing_since: None,
         }
     }
     fn ensure_running(&mut self) -> Result<(), String> {
@@ -99,12 +129,36 @@ impl MdnsDiscoveryAdapter {
             .map_err(|error| error.to_string())?;
         self.daemon = Some(daemon);
         self.events = Some(events);
+        self.browsing_since = Some(Instant::now());
         Ok(())
     }
     fn reset(&mut self) {
         self.daemon = None;
         self.events = None;
         self.fullname = None;
+        self.browsing_since = None;
+    }
+    /// Replaces the browse subscription once it has gone quiet. A fresh browse
+    /// replays the daemon's cache to the new receiver and issues an immediate
+    /// query, so peers are re-observed on a fixed cadence.
+    fn restart_browse_if_stale(&mut self) {
+        if self
+            .browsing_since
+            .is_some_and(|since| since.elapsed() < REBROWSE_AFTER)
+        {
+            return;
+        }
+        let Some(daemon) = self.daemon.as_ref() else {
+            return;
+        };
+        let _ = daemon.stop_browse(SERVICE_TYPE);
+        match daemon.browse(SERVICE_TYPE) {
+            Ok(events) => {
+                self.events = Some(events);
+                self.browsing_since = Some(Instant::now());
+            }
+            Err(_) => self.reset(),
+        }
     }
 }
 impl DiscoveryAdapter for MdnsDiscoveryAdapter {
@@ -175,8 +229,15 @@ impl DiscoveryAdapter for MdnsDiscoveryAdapter {
             .expect("mDNS events initialized")
             .try_recv()
         {
-            let ServiceEvent::ServiceResolved(info) = event else {
-                continue;
+            let info = match event {
+                ServiceEvent::ServiceResolved(info) => info,
+                ServiceEvent::ServiceRemoved(_, fullname) => {
+                    if let Some(device_id) = device_id_from_instance(&fullname) {
+                        self.departed.push(device_id);
+                    }
+                    continue;
+                }
+                _ => continue,
             };
             let Some(endpoint) = preferred_lan_endpoint(info.get_addresses(), info.get_port())
             else {
@@ -211,7 +272,11 @@ impl DiscoveryAdapter for MdnsDiscoveryAdapter {
                 capabilities,
             });
         }
+        self.restart_browse_if_stale();
         Ok(records)
+    }
+    fn departed(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.departed)
     }
 }
 
@@ -281,6 +346,9 @@ pub struct DiscoveryCoordinator {
     nearby: Mutex<HashMap<String, NearbyCandidate>>,
     state: Mutex<MdnsState>,
     errors: Mutex<VecDeque<String>>,
+    /// This device answers its own multicast queries, so without this it
+    /// discovers itself and opens a pairing handshake against its own listener.
+    local_device_id: Mutex<Option<String>>,
 }
 
 impl DiscoveryCoordinator {
@@ -292,7 +360,24 @@ impl DiscoveryCoordinator {
             nearby: Mutex::new(HashMap::new()),
             state: Mutex::new(MdnsState::Disabled),
             errors: Mutex::new(VecDeque::new()),
+            local_device_id: Mutex::new(None),
         }
+    }
+
+    /// Records this device's own identity so its advertisement is ignored.
+    pub fn set_local_device_id(&self, device_id: &str) {
+        *self
+            .local_device_id
+            .lock()
+            .expect("local device id mutex poisoned") = Some(device_id.to_owned());
+    }
+
+    fn is_self(&self, device_id: &str) -> bool {
+        self.local_device_id
+            .lock()
+            .expect("local device id mutex poisoned")
+            .as_deref()
+            == Some(device_id)
     }
 
     /// Advertise only the public identity, compatibility metadata, and bound
@@ -395,12 +480,55 @@ impl DiscoveryCoordinator {
                 observed.push(device_id);
             }
         }
+        let departed = self
+            .adapter
+            .lock()
+            .expect("discovery adapter mutex poisoned")
+            .departed();
+        for device_id in departed {
+            self.forget_presence(&device_id);
+        }
         self.expire(now);
         observed
     }
 
+    /// Drops a peer the transport says is gone. Presence is cleared rather
+    /// than left to age out so the UI stops offering an unreachable target.
+    pub fn forget_presence(&self, device_id: &str) {
+        self.nearby
+            .lock()
+            .expect("nearby mutex poisoned")
+            .remove(device_id);
+        if let Some(presence) = self
+            .presence
+            .lock()
+            .expect("presence mutex poisoned")
+            .get_mut(device_id)
+        {
+            presence.online = false;
+        }
+    }
+
+    /// Reachability is ground truth for a trusted peer. A multicast record only
+    /// says a device announced itself at some point; it stops being re-sent long
+    /// before the device goes away, so presence driven by it alone flaps.
+    pub fn record_reachability(&self, device_id: &str, reachable: bool, now: i64) {
+        let mut presence = self.presence.lock().expect("presence mutex poisoned");
+        let entry = presence
+            .entry(device_id.to_owned())
+            .or_insert_with(|| Presence {
+                device_id: device_id.to_owned(),
+                online: false,
+                last_seen_at: None,
+            });
+        entry.online = reachable;
+        if reachable {
+            entry.last_seen_at = Some(now);
+        }
+    }
+
     fn observe(&self, record: DiscoveryRecord, repository: &SettingsRepository, now: i64) -> bool {
-        if !valid_record(&record) {
+        if !valid_record(&record) || self.is_self(&record.device_id) {
             return false;
         }
         let Ok(Some(peer)) = repository.trusted_peer(&record.device_id) else {
@@ -583,6 +711,7 @@ mod tests {
         published: Vec<DiscoveryRecord>,
         withdraws: usize,
         records: VecDeque<Vec<DiscoveryRecord>>,
+        departures: VecDeque<Vec<String>>,
     }
     impl DiscoveryAdapter for Arc<Mutex<Mock>> {
         fn publish(&mut self, record: &DiscoveryRecord) -> Result<(), String> {
@@ -595,6 +724,13 @@ mod tests {
         }
         fn browse(&mut self) -> Result<Vec<DiscoveryRecord>, String> {
             Ok(self.lock().unwrap().records.pop_front().unwrap_or_default())
+        }
+        fn departed(&mut self) -> Vec<String> {
+            self.lock()
+                .unwrap()
+                .departures
+                .pop_front()
+                .unwrap_or_default()
         }
     }
     fn record(id: &str, pin: &str, endpoint: &str) -> DiscoveryRecord {
@@ -621,6 +757,135 @@ mod tests {
             endpoint: None,
         }
     }
+    #[test]
+    fn a_device_never_discovers_itself() {
+        // Multicast is answered by every group member, so this device sees its
+        // own advertisement. Acting on it opens a handshake against its own
+        // listener that can never complete.
+        let mock = Arc::new(Mutex::new(Mock::default()));
+        mock.lock().unwrap().records.push_back(vec![
+            record("SELF", &"a".repeat(64), "192.168.1.24:48721"),
+            record("PEER", &"b".repeat(64), "192.168.1.25:48721"),
+        ]);
+        let coordinator = DiscoveryCoordinator::new(Box::new(mock.clone()));
+        coordinator.set_local_device_id("SELF");
+        let temp = tempfile::tempdir().unwrap();
+        let repository = SettingsRepository::open(temp.path().join("db.sqlite")).unwrap();
+
+        let observed = coordinator.refresh(&repository, 10);
+
+        assert_eq!(observed, vec!["PEER".to_owned()]);
+        let nearby: Vec<String> = coordinator
+            .nearby()
+            .into_iter()
+            .map(|candidate| candidate.record.device_id)
+            .collect();
+        assert_eq!(nearby, vec!["PEER".to_owned()]);
+        assert!(coordinator.candidate("SELF").is_none());
+    }
+
+    #[test]
+    fn reachability_decides_presence_after_multicast_goes_quiet() {
+        // Record TTLs stop the daemon re-resolving a peer long before any
+        // presence window worth showing a user, so a peer that is still
+        // answering must stay online without a fresh advertisement.
+        let mock = Arc::new(Mutex::new(Mock::default()));
+        let pin = "e".repeat(64);
+        mock.lock()
+            .unwrap()
+            .records
+            .push_back(vec![record("LIVE", &pin, "192.168.1.28:48721")]);
+        let coordinator = DiscoveryCoordinator::new(Box::new(mock.clone()));
+        let temp = tempfile::tempdir().unwrap();
+        let repository = SettingsRepository::open(temp.path().join("db.sqlite")).unwrap();
+        repository.upsert_trusted_peer(&peer("LIVE", &pin)).unwrap();
+
+        coordinator.refresh(&repository, 100);
+        assert!(coordinator.snapshot(&peer("LIVE", &pin)).online);
+
+        // Multicast goes quiet well past the window; probing keeps it online.
+        let quiet = 100 + PRESENCE_TTL_SECS * 4;
+        coordinator.record_reachability("LIVE", true, quiet);
+        coordinator.refresh(&repository, quiet);
+        assert!(
+            coordinator.snapshot(&peer("LIVE", &pin)).online,
+            "a reachable peer must not drop just because mDNS stopped repeating"
+        );
+
+        // And an unreachable peer drops on the next round, not on a timer.
+        coordinator.record_reachability("LIVE", false, quiet + 10);
+        assert!(!coordinator.snapshot(&peer("LIVE", &pin)).online);
+    }
+
+    #[test]
+    fn a_departed_peer_drops_immediately_rather_than_aging_out() {
+        let mock = Arc::new(Mutex::new(Mock::default()));
+        let pin = "c".repeat(64);
+        mock.lock()
+            .unwrap()
+            .records
+            .push_back(vec![record("GONE", &pin, "192.168.1.26:48721")]);
+        let coordinator = DiscoveryCoordinator::new(Box::new(mock.clone()));
+        let temp = tempfile::tempdir().unwrap();
+        let repository = SettingsRepository::open(temp.path().join("db.sqlite")).unwrap();
+        repository.upsert_trusted_peer(&peer("GONE", &pin)).unwrap();
+
+        coordinator.refresh(&repository, 10);
+        assert!(coordinator.snapshot(&peer("GONE", &pin)).online);
+
+        // The peer says goodbye one second later; it must not stay online for
+        // the rest of the presence window.
+        mock.lock()
+            .unwrap()
+            .departures
+            .push_back(vec!["GONE".to_owned()]);
+        coordinator.refresh(&repository, 11);
+
+        assert!(!coordinator.snapshot(&peer("GONE", &pin)).online);
+    }
+
+    #[test]
+    fn a_silent_peer_goes_offline_once_the_presence_window_closes() {
+        let mock = Arc::new(Mutex::new(Mock::default()));
+        let pin = "d".repeat(64);
+        mock.lock()
+            .unwrap()
+            .records
+            .push_back(vec![record("QUIET", &pin, "192.168.1.27:48721")]);
+        let coordinator = DiscoveryCoordinator::new(Box::new(mock.clone()));
+        let temp = tempfile::tempdir().unwrap();
+        let repository = SettingsRepository::open(temp.path().join("db.sqlite")).unwrap();
+        repository
+            .upsert_trusted_peer(&peer("QUIET", &pin))
+            .unwrap();
+
+        coordinator.refresh(&repository, 100);
+        assert!(coordinator.snapshot(&peer("QUIET", &pin)).online);
+
+        coordinator.refresh(&repository, 100 + PRESENCE_TTL_SECS - 1);
+        assert!(
+            coordinator.snapshot(&peer("QUIET", &pin)).online,
+            "a peer must not flap offline while still inside the window"
+        );
+
+        coordinator.refresh(&repository, 100 + PRESENCE_TTL_SECS);
+        assert!(!coordinator.snapshot(&peer("QUIET", &pin)).online);
+    }
+
+    #[test]
+    fn device_ids_are_recovered_from_removal_event_names() {
+        assert_eq!(
+            device_id_from_instance("fileporter-ABC._fileporter._tcp.local."),
+            Some("ABC".to_owned())
+        );
+        assert_eq!(
+            device_id_from_instance("fileporter-ABC"),
+            Some("ABC".to_owned())
+        );
+        assert_eq!(device_id_from_instance("something-else.local."), None);
+        assert_eq!(device_id_from_instance("fileporter-"), None);
+    }
+
     #[test]
     fn resolved_service_prefers_a_reachable_private_ipv4_address() {
         let addresses = [

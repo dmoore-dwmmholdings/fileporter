@@ -7,6 +7,11 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Notify;
 use tokio_util::sync::CancellationToken;
 
+/// Four probes fit inside the presence window, so a single dropped packet or
+/// momentary refusal never flips a healthy peer offline.
+const PRESENCE_PROBE_EVERY: std::time::Duration = std::time::Duration::from_secs(10);
+const PRESENCE_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
+
 use crate::discovery::{
     resolve_advertised_endpoint, DiscoveryCoordinator, DiscoveryRecord, MdnsDiscoveryAdapter,
     CAPABILITIES, PROTOCOL_VERSION,
@@ -36,6 +41,7 @@ pub struct AppState {
     events: StateEvents,
     event_worker: Arc<Mutex<Option<StateEventWorker>>>,
     automatic_pairing_inflight: Arc<Mutex<HashSet<String>>>,
+    probing: Arc<AtomicBool>,
 }
 
 struct SenderScheduler {
@@ -259,13 +265,18 @@ impl AppState {
             events.clone(),
         ));
         engine.reconcile_receiver_startup()?;
+        let discovery = Arc::new(DiscoveryCoordinator::new(Box::new(
+            MdnsDiscoveryAdapter::new(),
+        )));
+        // Multicast is answered by every member of the group including this
+        // one. Teach discovery its own identity before it ever browses.
+        let (local_device_id, _) = pairing.discovery_identity();
+        discovery.set_local_device_id(&local_device_id);
         Ok(Self {
             engine,
             settings,
             pairing,
-            discovery: Arc::new(DiscoveryCoordinator::new(Box::new(
-                MdnsDiscoveryAdapter::new(),
-            ))),
+            discovery,
             revision: Arc::new(AtomicU64::new(1)),
             shutting_down: Arc::new(AtomicBool::new(false)),
             shutdown_complete: Arc::new(AtomicBool::new(false)),
@@ -280,6 +291,7 @@ impl AppState {
             events,
             event_worker: Arc::new(Mutex::new(None)),
             automatic_pairing_inflight: Arc::new(Mutex::new(HashSet::new())),
+            probing: Arc::new(AtomicBool::new(false)),
         })
     }
     pub fn snapshot(&self, window_visible: bool) -> Result<AppSnapshot, crate::error::AppError> {
@@ -526,6 +538,9 @@ impl AppState {
     }
 
     async fn run_sender_scheduler(&self) {
+        // Probe immediately on the first pass so a peer is not shown offline
+        // for a whole interval after launch.
+        let mut last_probe = std::time::Instant::now() - PRESENCE_PROBE_EVERY;
         loop {
             if self.scheduler.cancellation.is_cancelled() {
                 break;
@@ -538,6 +553,10 @@ impl AppState {
                 let _ = self.wake_waiting_peer(&device_id);
             }
             self.start_automatic_pairings();
+            if last_probe.elapsed() >= PRESENCE_PROBE_EVERY {
+                last_probe = std::time::Instant::now();
+                self.spawn_presence_probe();
+            }
             let candidates = self.settings.outgoing_batches().unwrap_or_default();
             for record in candidates {
                 if self.scheduler.cancellation.is_cancelled() {
@@ -717,6 +736,68 @@ impl AppState {
             });
         }
     }
+    /// Runs one reachability round off the scheduler loop so a slow or
+    /// unreachable peer never delays queued transfers. Rounds never overlap.
+    fn spawn_presence_probe(&self) {
+        if self.probing.swap(true, Ordering::AcqRel) {
+            return;
+        }
+        let state = self.clone();
+        let round = async move {
+            state.probe_presence().await;
+            state.probing.store(false, Ordering::Release);
+        };
+        #[cfg(feature = "desktop")]
+        tauri::async_runtime::spawn(round);
+        #[cfg(not(feature = "desktop"))]
+        tokio::spawn(round);
+    }
+
+    /// Presence follows whether the peer's pinned endpoint actually answers.
+    /// The endpoint itself still comes from an identity-and-pin matched
+    /// discovery record, and every transfer re-proves identity over TLS; this
+    /// only decides whether the device is shown as reachable right now.
+    async fn probe_presence(&self) {
+        let Ok(peers) = self.settings.active_trusted_peers() else {
+            return;
+        };
+        let mut changed = false;
+        for peer in peers {
+            let Some(endpoint) = peer
+                .endpoint
+                .as_deref()
+                .and_then(|value| value.parse::<std::net::SocketAddr>().ok())
+            else {
+                continue;
+            };
+            let reachable = tokio::time::timeout(
+                PRESENCE_PROBE_TIMEOUT,
+                tokio::net::TcpStream::connect(endpoint),
+            )
+            .await
+            .is_ok_and(|result| result.is_ok());
+            let was_online = self.discovery.snapshot(&peer).online;
+            let now = unix_now();
+            self.discovery
+                .record_reachability(&peer.device_id, reachable, now);
+            if reachable {
+                let mut refreshed = peer.clone();
+                refreshed.last_seen_at = Some(now);
+                let _ = self.settings.upsert_trusted_peer(&refreshed);
+            }
+            if reachable != was_online {
+                changed = true;
+                if reachable {
+                    let _ = self.wake_waiting_peer(&peer.device_id);
+                }
+            }
+        }
+        if changed {
+            self.bump_revision();
+            self.events.emit(StateEventKind::Progress);
+        }
+    }
+
     pub fn cancel_batch(&self, batch_id: &str) -> Result<(), crate::error::AppError> {
         if let Some(token) = self
             .scheduler
