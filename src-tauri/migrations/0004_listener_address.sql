@@ -1,0 +1,1 @@
+ALTER TABLE settings ADD COLUMN listen_address TEXT NOT NULL DEFAULT '127.0.0.1:0';

@@ -1,0 +1,17 @@
+[package]
+name = "fileporter-protocol"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.77"
+description = "Pure Fileporter protocol v1 framing, messages, chunks, and session validation"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+blake3 = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["serde"] }
+
+[lints.rust]
+unsafe_code = "forbid"

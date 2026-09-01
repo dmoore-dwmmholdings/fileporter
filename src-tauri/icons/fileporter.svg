@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title>Fileporter</title>
+  <rect width="512" height="512" rx="112" fill="#102238"/>
+  <path d="M113 170c0-25 20-45 45-45h124l55 55v162c0 25-20 45-45 45H158c-25 0-45-20-45-45V170Z" fill="#EAF7FF"/>
+  <path d="M282 125v55h55" fill="#83D7FF"/>
+  <path d="M184 252h111m-52-52 52 52-52 52" fill="none" stroke="#176B9C" stroke-linecap="round" stroke-linejoin="round" stroke-width="30"/>
+  <circle cx="371" cy="335" r="45" fill="#4BE0AF"/>
+  <path d="m349 335 15 15 30-32" fill="none" stroke="#102238" stroke-linecap="round" stroke-linejoin="round" stroke-width="14"/>
+</svg>

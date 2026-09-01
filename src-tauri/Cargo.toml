@@ -1,0 +1,64 @@
+[package]
+name = "fileporter"
+version = "0.1.0"
+description = "Direct local-network file transfer"
+authors = ["Fileporter contributors"]
+license = "MIT OR Apache-2.0"
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "fileporter_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[[bin]]
+name = "fileporter"
+path = "src/main.rs"
+required-features = ["desktop"]
+
+[features]
+default = ["desktop"]
+# The desktop shell brings in WebView2/Wry on Windows. Keeping it separate lets
+# core unit tests run without a native webview loader or GUI environment.
+desktop = [
+    "dep:tauri",
+    "dep:tauri-plugin-autostart",
+    "dep:tauri-plugin-dialog",
+    "dep:tauri-plugin-notification",
+    "dep:tauri-plugin-single-instance",
+]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+anyhow = "1"
+blake3 = "1"
+fileporter-identity = { path = "../crates/fileporter-identity" }
+fileporter-network = { path = "../crates/fileporter-network" }
+fileporter-protocol = { path = "../crates/fileporter-protocol" }
+fileporter-transfer = { path = "../crates/fileporter-transfer" }
+flume = "0.11"
+hex = "0.4"
+keyring = "3.6"
+mdns-sd = "0.11"
+rusqlite = { version = "0.32", features = ["bundled"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = ["tray-icon"], optional = true }
+tauri-plugin-autostart = { version = "2", optional = true }
+tauri-plugin-dialog = { version = "2", optional = true }
+tauri-plugin-notification = { version = "2", optional = true }
+tauri-plugin-single-instance = { version = "2", optional = true }
+thiserror = "2"
+tokio = { version = "1", features = ["net", "time", "rt", "sync", "macros"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+tokio-rustls = "0.26"
+tracing = "0.1"
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+tempfile = "3"
