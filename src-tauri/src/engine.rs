@@ -1919,7 +1919,7 @@ impl Engine {
     /// Starts one listener after validating that it is bound to a local-network
     /// address. Port zero is allowed for tests and OS-assigned listener ports.
     pub async fn start_listener(&self, address: SocketAddr) -> Result<SocketAddr, ListenerError> {
-        if !is_loopback_or_private(address.ip()) {
+        if !address.ip().is_unspecified() && !is_loopback_or_private(address.ip()) {
             return Err(ListenerError::InvalidAddress);
         }
         if self.lifecycle() == EngineLifecycle::ShutDown {
@@ -2499,7 +2499,7 @@ pub fn validate_manual_endpoint(endpoint: &str) -> Result<SocketAddr, ListenerEr
 /// zero is useful here because it asks the OS to choose an available port.
 pub fn validate_listen_address(address: &str) -> Result<SocketAddr, ListenerError> {
     let address: SocketAddr = address.parse().map_err(|_| ListenerError::InvalidAddress)?;
-    if !is_loopback_or_private(address.ip()) {
+    if !address.ip().is_unspecified() && !is_loopback_or_private(address.ip()) {
         return Err(ListenerError::InvalidAddress);
     }
     Ok(address)
@@ -3435,6 +3435,8 @@ mod tests {
         assert!(validate_manual_endpoint("0.0.0.0:4242").is_err());
         assert!(validate_manual_endpoint("127.0.0.1:0").is_err());
         assert!(validate_listen_address("127.0.0.1:0").is_ok());
+        assert!(validate_listen_address("0.0.0.0:0").is_ok());
+        assert!(validate_listen_address("[::]:0").is_ok());
     }
 
     #[tokio::test]

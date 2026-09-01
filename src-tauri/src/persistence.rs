@@ -20,6 +20,8 @@ const OS_SECRET_STORE_MIGRATION: &str = include_str!("../migrations/0010_os_secr
 const SETTINGS_CONTRACT_MIGRATION: &str = include_str!("../migrations/0011_settings_contract.sql");
 const AUTOMATIC_DEVICE_TRUST_MIGRATION: &str =
     include_str!("../migrations/0012_automatic_device_trust.sql");
+const LAN_LISTENER_DEFAULT_MIGRATION: &str =
+    include_str!("../migrations/0013_lan_listener_default.sql");
 
 const BUSY_TIMEOUT_MS: u64 = 5_000;
 pub(crate) type LegacyTlsCredentials = (Vec<u8>, Vec<u8>);
@@ -133,7 +135,7 @@ impl Default for Settings {
             receive_directory: None,
             onboarding_complete: false,
             receiving_enabled: true,
-            listen_address: "127.0.0.1:0".into(),
+            listen_address: "0.0.0.0:0".into(),
             launch_at_login: true,
             notifications_enabled: true,
             automatic_device_trust: true,
@@ -837,6 +839,17 @@ fn apply_migrations(connection: &mut Connection) -> Result<(), AppError> {
             )
             .map_err(AppError::Database)?;
     }
+    if version < 13 {
+        transaction
+            .execute_batch(LAN_LISTENER_DEFAULT_MIGRATION)
+            .map_err(AppError::Database)?;
+        transaction
+            .execute(
+                "UPDATE schema_metadata SET value = '13' WHERE key = 'migration_version'",
+                [],
+            )
+            .map_err(AppError::Database)?;
+    }
     transaction.commit().map_err(AppError::Database)
 }
 
@@ -936,7 +949,27 @@ mod tests {
         assert_eq!(repo.load().unwrap(), Settings::default());
         assert_eq!(repo.load().unwrap().history_retention_days, 30);
         assert!(repo.load().unwrap().automatic_device_trust);
-        assert_eq!(repo.migration_version().unwrap(), 12);
+        assert_eq!(repo.migration_version().unwrap(), 13);
+        assert_eq!(repo.load().unwrap().listen_address, "0.0.0.0:0");
+    }
+    #[test]
+    fn migration_replaces_only_the_old_loopback_default() {
+        let d = tempfile::tempdir().unwrap();
+        let db = d.path().join("settings.sqlite3");
+        let repo = SettingsRepository::open(db.clone()).unwrap();
+        repo.connection
+            .lock()
+            .unwrap()
+            .execute_batch(
+                "UPDATE settings SET listen_address = '127.0.0.1:0';
+                 UPDATE schema_metadata SET value = '12' WHERE key = 'migration_version';",
+            )
+            .unwrap();
+        drop(repo);
+
+        let migrated = SettingsRepository::open(db).unwrap();
+        assert_eq!(migrated.load().unwrap().listen_address, "0.0.0.0:0");
+        assert_eq!(migrated.migration_version().unwrap(), 13);
     }
     #[test]
     fn settings_updates_survive_reopening() {
@@ -1032,7 +1065,7 @@ mod tests {
                     |row| row.get::<_, String>(0),
                 )
                 .unwrap(),
-            "12"
+            "13"
         );
         drop(connection);
         assert_eq!(reopened.trusted_peer(&peer.device_id).unwrap(), Some(peer));
@@ -1078,7 +1111,7 @@ mod tests {
                     |row| row.get::<_, String>(0),
                 )
                 .unwrap(),
-            "12"
+            "13"
         );
     }
 

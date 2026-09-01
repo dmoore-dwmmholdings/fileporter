@@ -8,7 +8,8 @@ use tokio::sync::Notify;
 use tokio_util::sync::CancellationToken;
 
 use crate::discovery::{
-    DiscoveryCoordinator, DiscoveryRecord, MdnsDiscoveryAdapter, CAPABILITIES, PROTOCOL_VERSION,
+    resolve_advertised_endpoint, DiscoveryCoordinator, DiscoveryRecord, MdnsDiscoveryAdapter,
+    CAPABILITIES, PROTOCOL_VERSION,
 };
 use crate::engine::{Engine, EngineLifecycle, ListenerStatus};
 use crate::engine::{LoopbackBatchEntry, LoopbackBatchTransfer};
@@ -430,20 +431,23 @@ impl AppState {
         }
         let listener = self.engine.listener_status();
         let local = if settings.onboarding_complete && settings.receiving_enabled {
-            listener.bound_endpoint.map(|endpoint| {
-                let (device_id, certificate_fingerprint) = self.pairing.discovery_identity();
-                DiscoveryRecord {
-                    device_id,
-                    device_name: settings.device_name.clone(),
-                    endpoint,
-                    certificate_fingerprint,
-                    protocol_version: PROTOCOL_VERSION,
-                    capabilities: CAPABILITIES
-                        .iter()
-                        .map(|capability| (*capability).to_owned())
-                        .collect(),
-                }
-            })
+            listener
+                .bound_endpoint
+                .and_then(resolve_advertised_endpoint)
+                .map(|endpoint| {
+                    let (device_id, certificate_fingerprint) = self.pairing.discovery_identity();
+                    DiscoveryRecord {
+                        device_id,
+                        device_name: settings.device_name.clone(),
+                        endpoint,
+                        certificate_fingerprint,
+                        protocol_version: PROTOCOL_VERSION,
+                        capabilities: CAPABILITIES
+                            .iter()
+                            .map(|capability| (*capability).to_owned())
+                            .collect(),
+                    }
+                })
         } else {
             None
         };
@@ -1523,6 +1527,7 @@ fn snapshot_from_settings(
 fn local_interface_summaries(listener: ListenerStatus) -> Vec<String> {
     listener
         .bound_endpoint
+        .and_then(resolve_advertised_endpoint)
         .map(|endpoint| vec![format!("bound:{}", endpoint.ip())])
         .unwrap_or_default()
 }

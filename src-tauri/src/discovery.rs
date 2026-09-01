@@ -7,7 +7,7 @@
 
 use std::{
     collections::{HashMap, VecDeque},
-    net::SocketAddr,
+    net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket},
     sync::Mutex,
 };
 
@@ -15,7 +15,7 @@ use flume::Receiver;
 use mdns_sd::{ServiceDaemon, ServiceEvent, ServiceInfo};
 
 use crate::{
-    engine::validate_manual_endpoint,
+    engine::{is_loopback_or_private, validate_manual_endpoint},
     persistence::{SettingsRepository, TrustedPeer},
 };
 
@@ -119,16 +119,28 @@ impl DiscoveryAdapter for MdnsDiscoveryAdapter {
         ];
         let instance = format!("fileporter-{}", record.device_id);
         let host = format!("{}.local.", instance);
-        let info = ServiceInfo::new(
-            SERVICE_TYPE,
-            &instance,
-            &host,
-            record.endpoint.ip(),
-            record.endpoint.port(),
-            &properties[..],
-        )
-        .map_err(|error| error.to_string())?
-        .enable_addr_auto();
+        let info = if record.endpoint.ip().is_unspecified() {
+            ServiceInfo::new(
+                SERVICE_TYPE,
+                &instance,
+                &host,
+                (),
+                record.endpoint.port(),
+                &properties[..],
+            )
+            .map_err(|error| error.to_string())?
+            .enable_addr_auto()
+        } else {
+            ServiceInfo::new(
+                SERVICE_TYPE,
+                &instance,
+                &host,
+                record.endpoint.ip(),
+                record.endpoint.port(),
+                &properties[..],
+            )
+            .map_err(|error| error.to_string())?
+        };
         self.fullname = Some(info.get_fullname().to_owned());
         if let Err(error) = self
             .daemon
@@ -166,12 +178,8 @@ impl DiscoveryAdapter for MdnsDiscoveryAdapter {
             let ServiceEvent::ServiceResolved(info) = event else {
                 continue;
             };
-            let Some(endpoint) = info.get_addresses().iter().find_map(|ip| {
-                SocketAddr::new(*ip, info.get_port())
-                    .to_string()
-                    .parse()
-                    .ok()
-            }) else {
+            let Some(endpoint) = preferred_lan_endpoint(info.get_addresses(), info.get_port())
+            else {
                 continue;
             };
             let Some(device_id) = info.get_property_val_str("id") else {
@@ -204,6 +212,65 @@ impl DiscoveryAdapter for MdnsDiscoveryAdapter {
             });
         }
         Ok(records)
+    }
+}
+
+fn preferred_lan_endpoint(
+    addresses: &std::collections::HashSet<IpAddr>,
+    port: u16,
+) -> Option<SocketAddr> {
+    preferred_lan_endpoint_for_local(addresses, port, primary_lan_ip())
+}
+
+fn preferred_lan_endpoint_for_local(
+    addresses: &std::collections::HashSet<IpAddr>,
+    port: u16,
+    local: Option<IpAddr>,
+) -> Option<SocketAddr> {
+    if port == 0 {
+        return None;
+    }
+    addresses
+        .iter()
+        .copied()
+        .filter(|address| is_loopback_or_private(*address))
+        .min_by_key(|address| match address {
+            IpAddr::V4(address) if address.is_private() => {
+                let distance = match local {
+                    Some(IpAddr::V4(local)) => u32::from(*address) ^ u32::from(local),
+                    _ => u32::MAX,
+                };
+                (0, u128::from(distance))
+            }
+            IpAddr::V6(address) => {
+                let distance = match local {
+                    Some(IpAddr::V6(local)) => u128::from(*address) ^ u128::from(local),
+                    _ => u128::MAX,
+                };
+                (1, distance)
+            }
+            IpAddr::V4(_) => (2, u128::MAX),
+        })
+        .map(|address| SocketAddr::new(address, port))
+}
+
+/// Turns an all-interface bind address into the concrete address peers should
+/// dial. UDP connect only asks the OS routing table for the selected interface;
+/// it sends no probe packet.
+pub fn resolve_advertised_endpoint(bound: SocketAddr) -> Option<SocketAddr> {
+    if !bound.ip().is_unspecified() {
+        return is_loopback_or_private(bound.ip()).then_some(bound);
+    }
+    primary_lan_ip().map(|address| SocketAddr::new(address, bound.port()))
+}
+
+fn primary_lan_ip() -> Option<IpAddr> {
+    let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0)).ok()?;
+    socket.connect((Ipv4Addr::new(192, 0, 2, 1), 9)).ok()?;
+    let address = socket.local_addr().ok()?.ip();
+    match address {
+        IpAddr::V4(address) if address.is_private() => Some(IpAddr::V4(address)),
+        _ => None,
     }
 }
 
@@ -554,6 +621,32 @@ mod tests {
             endpoint: None,
         }
     }
+    #[test]
+    fn resolved_service_prefers_a_reachable_private_ipv4_address() {
+        let addresses = [
+            "fe80::1234".parse().unwrap(),
+            "fd00::1234".parse().unwrap(),
+            "8.8.8.8".parse().unwrap(),
+            "192.168.1.24".parse().unwrap(),
+        ]
+        .into_iter()
+        .collect();
+
+        assert_eq!(
+            preferred_lan_endpoint_for_local(
+                &addresses,
+                4242,
+                Some("192.168.1.200".parse().unwrap())
+            ),
+            Some("192.168.1.24:4242".parse().unwrap())
+        );
+        assert_eq!(preferred_lan_endpoint_for_local(&addresses, 0, None), None);
+        assert_eq!(
+            resolve_advertised_endpoint("127.0.0.1:4242".parse().unwrap()),
+            Some("127.0.0.1:4242".parse().unwrap())
+        );
+    }
+
     #[test]
     fn advertise_update_expiry_spoof_and_restart_are_deterministic() {
         let temp = tempfile::tempdir().unwrap();

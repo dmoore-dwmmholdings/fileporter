@@ -7,8 +7,8 @@ import type { BackendAppSnapshot } from './types/view-models';
 const onboardingSnapshot: BackendAppSnapshot = {
   revision: 1,
   lifecycle: { windowVisible: true, receivingEnabled: true, listening: false, receiving: false, shuttingDown: false },
-  settings: { deviceName: '', receiveDirectory: null, onboardingComplete: false, launchAtLogin: true, notificationsEnabled: true, receivingEnabled: true, automaticDeviceTrust: true, preferredListenAddress: '127.0.0.1:0', preferredListenPort: 0, historyRetentionDays: 30 },
-  managersStarted: false, localDeviceName: '', devices: [], nearbyDevices: [], transfers: [], history: [], queuedBatches: [], pairing: { localDeviceId: 'local', pendingPairings: [], trustedDevices: [] }, network: { listening: false, boundEndpoint: null, preferredListenAddress: '127.0.0.1:0', trustedOnlineEndpoints: [], mdnsState: 'stopped', localInterfaceSummaries: [], recentErrorCodes: [] }, about: { appVersion: '0.1.0', protocolVersion: 1, logsAvailable: true, databaseMigrationVersion: 8, ownedStagingBytes: 0 }
+  settings: { deviceName: '', receiveDirectory: null, onboardingComplete: false, launchAtLogin: true, notificationsEnabled: true, receivingEnabled: true, automaticDeviceTrust: true, preferredListenAddress: '0.0.0.0:0', preferredListenPort: 0, historyRetentionDays: 30 },
+  managersStarted: false, localDeviceName: '', devices: [], nearbyDevices: [], transfers: [], history: [], queuedBatches: [], pairing: { localDeviceId: 'local', pendingPairings: [], trustedDevices: [] }, network: { listening: false, boundEndpoint: null, preferredListenAddress: '0.0.0.0:0', trustedOnlineEndpoints: [], mdnsState: 'stopped', localInterfaceSummaries: [], recentErrorCodes: [] }, about: { appVersion: '0.1.0', protocolVersion: 1, logsAvailable: true, databaseMigrationVersion: 8, ownedStagingBytes: 0 }
 };
 const readySnapshot: BackendAppSnapshot = {
   revision: 2,
