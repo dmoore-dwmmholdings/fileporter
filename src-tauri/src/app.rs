@@ -73,6 +73,10 @@ pub fn run() {
                 while let Some(kind) = event_rx.recv().await {
                     // All event producers persist before signalling. This is the
                     // only desktop adapter: it reads that durable snapshot.
+                    // The frontend discards any snapshot whose revision it has
+                    // already seen, so an event that does not advance the
+                    // revision is delivered and then silently dropped.
+                    event_state.bump_revision();
                     let _ = commands::emit_snapshot(&event_app, &event_state);
                     crate::tray::refresh(&event_app, &event_state);
                     if matches!(kind, StateEventKind::Terminal) {

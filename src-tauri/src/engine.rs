@@ -1243,17 +1243,31 @@ impl ReceiverService {
         .await;
         match work {
             Ok(()) => {
+                let mut persisted = true;
                 if let Ok(Some(mut b)) = self.settings.batch(&bid) {
                     b.state = "completed".into();
                     b.completed_at = Some(unix_timestamp());
-                    let _ = self.settings.save_batch(&b);
+                    persisted &= self.settings.save_batch(&b).is_ok();
+                } else {
+                    persisted = false;
                 }
                 if let Ok(Some(mut t)) = self.settings.batch_target(&target) {
                     t.state = "completed".into();
                     t.acknowledged_bytes = total as i64;
-                    let _ = self.settings.save_batch_target(&t);
+                    persisted &= self.settings.save_batch_target(&t).is_ok();
+                } else {
+                    persisted = false;
                 }
                 let _ = area.cleanup_owned();
+                // Per-entry finalization already reports through
+                // finish_incoming, but a batch with nothing to finalize (an
+                // empty directory) reaches completion without any entry having
+                // signalled. Announce the batch's own terminal transition so
+                // that case still refreshes.
+                if persisted {
+                    self.events
+                        .emit(crate::state_events::StateEventKind::Terminal);
+                }
                 Ok(())
             }
             Err(e) => {
@@ -2592,6 +2606,40 @@ mod tests {
         )
     }
 
+    fn persistent_receiver_with_events(
+        directory: &std::path::Path,
+    ) -> (
+        Engine,
+        Arc<crate::persistence::SettingsRepository>,
+        Arc<crate::identity::PairingCoordinator>,
+        tokio::sync::mpsc::Receiver<crate::state_events::StateEventKind>,
+        crate::state_events::StateEventWorker,
+    ) {
+        let repository = Arc::new(
+            crate::persistence::SettingsRepository::open(directory.join("receiver.sqlite3"))
+                .unwrap(),
+        );
+        repository
+            .save(&crate::persistence::Settings {
+                device_name: "Receiver".into(),
+                receive_directory: Some(directory.to_string_lossy().to_string()),
+                onboarding_complete: true,
+                receiving_enabled: true,
+                ..crate::persistence::Settings::default()
+            })
+            .unwrap();
+        let pairing =
+            Arc::new(crate::identity::PairingCoordinator::open(repository.clone()).unwrap());
+        let (events, rx, worker) = crate::state_events::StateEventWorker::bounded(16);
+        (
+            Engine::with_receiver_and_events(pairing.clone(), repository.clone(), events),
+            repository,
+            pairing,
+            rx,
+            worker,
+        )
+    }
+
     fn persist_pin(repository: &crate::persistence::SettingsRepository, pin: &TrustedPeerPin) {
         repository
             .upsert_trusted_peer(&crate::persistence::TrustedPeer {
@@ -2754,6 +2802,91 @@ mod tests {
                 .as_deref(),
             Some("recovery_staging_missing")
         );
+    }
+
+    #[tokio::test]
+    async fn a_completed_receive_announces_itself_so_the_ui_can_stop_showing_it_in_flight() {
+        // The failure path reports through finish_incoming. Success used to
+        // persist "completed" and emit nothing, so the file landed on disk
+        // while the UI went on showing the transfer as still running.
+        let directory = tempfile::tempdir().unwrap();
+        let (receiver, repository, receiver_pairing, mut events, worker) =
+            persistent_receiver_with_events(directory.path());
+        let sender_repo = Arc::new(
+            crate::persistence::SettingsRepository::open(directory.path().join("sender.sqlite3"))
+                .unwrap(),
+        );
+        let sender_pairing =
+            Arc::new(crate::identity::PairingCoordinator::open(sender_repo).unwrap());
+        let sender = Engine::new(sender_pairing.clone());
+        let sender_cert = sender_pairing.local_certificate();
+        let receiver_cert = receiver_pairing.local_certificate();
+        persist_pin(
+            &repository,
+            &TrustedPeerPin::from_binding(sender_cert.binding()),
+        );
+        let endpoint = receiver
+            .start_listener("127.0.0.1:0".parse().unwrap())
+            .await
+            .unwrap();
+        let source = directory.path().join("arrival-source");
+        fs::write(&source, b"landed").unwrap();
+
+        sender
+            .send_one_loopback_file(
+                LoopbackFileTransfer {
+                    endpoint,
+                    local_certificate: sender_pairing.local_certificate(),
+                    trusted_peer: TrustedPeerPin::from_binding(receiver_cert.binding()),
+                    batch_id: uuid::Uuid::new_v4(),
+                    entry_id: uuid::Uuid::new_v4(),
+                    source,
+                    display_name: "arrival.txt".into(),
+                    resume_offset: 0,
+                    cancellation: CancellationToken::new(),
+                },
+                |_| {},
+            )
+            .await
+            .unwrap();
+
+        // The batch is durably complete...
+        let completed = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            loop {
+                let done = repository
+                    .all_batches()
+                    .unwrap()
+                    .iter()
+                    .any(|v| v.batch.direction == "incoming" && v.batch.state == "completed");
+                if done {
+                    break;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+            }
+        })
+        .await;
+        assert!(completed.is_ok(), "the receive never reached completed");
+        assert_eq!(
+            fs::read(directory.path().join("arrival.txt")).unwrap(),
+            b"landed"
+        );
+
+        // ...and it said so, which is the only reason the UI ever refreshes.
+        let mut saw_terminal = false;
+        while let Ok(Some(kind)) =
+            tokio::time::timeout(std::time::Duration::from_secs(5), events.recv()).await
+        {
+            if kind == crate::state_events::StateEventKind::Terminal {
+                saw_terminal = true;
+                break;
+            }
+        }
+        assert!(
+            saw_terminal,
+            "a completed receive emitted no terminal event; the UI would keep showing it in flight"
+        );
+        receiver.shutdown_listener().await;
+        worker.shutdown().await;
     }
 
     #[tokio::test]
