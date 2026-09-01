@@ -6,7 +6,10 @@ use std::{collections::HashMap, sync::Mutex};
 
 use crate::error::AppError;
 
+// Referenced only by the platform store, which test builds do not use.
+#[cfg_attr(test, allow(dead_code))]
 pub(crate) const SERVICE: &str = "io.fileporter.desktop";
+#[cfg_attr(test, allow(dead_code))]
 pub(crate) const DEVICE_SCOPE: &str = "local-device-v1";
 
 pub(crate) trait SecretStore: Send + Sync {
@@ -17,8 +20,10 @@ pub(crate) trait SecretStore: Send + Sync {
 /// `keyring` uses Windows Credential Manager and macOS Keychain for the
 /// supported desktop targets.  The stable service/account pair deliberately
 /// contains no device name, path, certificate, or key material.
+#[cfg_attr(test, allow(dead_code))]
 pub(crate) struct PlatformSecretStore;
 
+#[cfg_attr(test, allow(dead_code))]
 impl PlatformSecretStore {
     fn entry(name: &str) -> Result<keyring::Entry, AppError> {
         keyring::Entry::new(SERVICE, &format!("{DEVICE_SCOPE}.{name}"))

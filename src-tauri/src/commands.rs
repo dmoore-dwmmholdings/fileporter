@@ -16,6 +16,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_autostart::ManagerExt as AutostartExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_notification::NotificationExt;
+use tokio::sync::oneshot;
 
 trait LaunchAtLoginAdapter {
     fn set_enabled(&self, enabled: bool) -> Result<(), AppError>;
@@ -131,30 +132,45 @@ pub fn get_app_snapshot(
         .unwrap_or(false);
     state.snapshot(visible).map_err(Into::into)
 }
+/// The dialog plugin dispatches the native picker onto the main thread and
+/// reports the choice through a callback. Awaiting that callback keeps these
+/// commands off the main thread: a blocking pick issued from a synchronous
+/// command would block the very event loop that has to run the picker.
+async fn pick_files(app: &AppHandle) -> Option<Vec<tauri_plugin_dialog::FilePath>> {
+    let (tx, rx) = oneshot::channel();
+    app.dialog().file().pick_files(move |paths| {
+        let _ = tx.send(paths);
+    });
+    rx.await.ok().flatten()
+}
+async fn pick_folder(app: &AppHandle) -> Option<tauri_plugin_dialog::FilePath> {
+    let (tx, rx) = oneshot::channel();
+    app.dialog().file().pick_folder(move |path| {
+        let _ = tx.send(path);
+    });
+    rx.await.ok().flatten()
+}
 #[tauri::command]
-pub fn choose_files(app: AppHandle) -> Result<Vec<String>, AppErrorDto> {
-    app.dialog()
-        .file()
-        .blocking_pick_files()
+pub async fn choose_files(app: AppHandle) -> Result<Vec<String>, AppErrorDto> {
+    pick_files(&app)
+        .await
         .unwrap_or_default()
         .into_iter()
         .map(dialog_path_to_string)
         .collect()
 }
 #[tauri::command]
-pub fn choose_directory(app: AppHandle) -> Result<Vec<String>, AppErrorDto> {
-    app.dialog()
-        .file()
-        .blocking_pick_folder()
+pub async fn choose_directory(app: AppHandle) -> Result<Vec<String>, AppErrorDto> {
+    pick_folder(&app)
+        .await
         .map(dialog_path_to_string)
         .transpose()
         .map(|path| path.into_iter().collect())
 }
 #[tauri::command]
-pub fn choose_receive_directory(app: AppHandle) -> Result<Option<String>, AppErrorDto> {
-    app.dialog()
-        .file()
-        .blocking_pick_folder()
+pub async fn choose_receive_directory(app: AppHandle) -> Result<Option<String>, AppErrorDto> {
+    pick_folder(&app)
+        .await
         .map(dialog_path_to_string)
         .transpose()
 }
@@ -175,8 +191,8 @@ pub fn view_logs(app: AppHandle) -> Result<(), AppErrorDto> {
 /// Exports only Fileporter-owned log files to a folder chosen in the native
 /// dialog. The webview cannot provide either a source or destination path.
 #[tauri::command]
-pub fn export_logs(app: AppHandle) -> Result<Option<String>, AppErrorDto> {
-    let Some(destination) = app.dialog().file().blocking_pick_folder() else {
+pub async fn export_logs(app: AppHandle) -> Result<Option<String>, AppErrorDto> {
+    let Some(destination) = pick_folder(&app).await else {
         return Ok(None);
     };
     let destination = dialog_path_to_string(destination)?;

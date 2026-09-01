@@ -15,8 +15,12 @@ use serde::Serialize;
 use crate::{
     error::AppError,
     persistence::{PendingPairing, SettingsRepository, TrustedPeer},
-    secret_store::{PlatformSecretStore, SecretStore},
+    secret_store::SecretStore,
 };
+// Only the production `open` reaches for the platform store; test builds
+// substitute an isolated in-memory one.
+#[cfg_attr(test, allow(unused_imports))]
+use crate::secret_store::PlatformSecretStore;
 
 pub(crate) const PAIRING_LIFETIME: Duration = Duration::from_secs(120);
 
@@ -226,7 +230,19 @@ impl PairingCoordinator {
         )
     }
     pub fn open(repository: std::sync::Arc<SettingsRepository>) -> Result<Self, AppError> {
-        Self::open_with_store(repository, std::sync::Arc::new(PlatformSecretStore))
+        // Tests must never reach the machine's real credential store: the
+        // service/account pair is a single global row, so a parallel suite
+        // would race on it and leave entries behind on the developer's
+        // machine. Each test gets its own empty store, which is how the suite
+        // behaved when `keyring` silently resolved to its non-persistent mock.
+        // Tests that assert persistence inject a shared store explicitly
+        // through `open_with_secret_store`.
+        #[cfg(test)]
+        let secrets: std::sync::Arc<dyn SecretStore> =
+            std::sync::Arc::new(crate::secret_store::InMemorySecretStore::default());
+        #[cfg(not(test))]
+        let secrets: std::sync::Arc<dyn SecretStore> = std::sync::Arc::new(PlatformSecretStore);
+        Self::open_with_store(repository, secrets)
     }
     fn open_with_store(
         repository: std::sync::Arc<SettingsRepository>,

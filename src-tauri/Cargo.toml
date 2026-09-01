@@ -40,7 +40,12 @@ fileporter-protocol = { path = "../crates/fileporter-protocol" }
 fileporter-transfer = { path = "../crates/fileporter-transfer" }
 flume = "0.11"
 hex = "0.4"
-keyring = "3.6"
+# keyring 3.x enables no credential store by default: without a platform
+# feature it resolves to the in-memory mock store, which silently discards
+# the device identity on exit and re-pairs every peer on each launch.
+# Both features are target-gated inside keyring, so each pulls its backend
+# only on the matching platform.
+keyring = { version = "3.6", features = ["apple-native", "windows-native"] }
 mdns-sd = "0.11"
 rusqlite = { version = "0.32", features = ["bundled"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
