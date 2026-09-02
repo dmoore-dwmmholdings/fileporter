@@ -22,6 +22,8 @@ const AUTOMATIC_DEVICE_TRUST_MIGRATION: &str =
     include_str!("../migrations/0012_automatic_device_trust.sql");
 const LAN_LISTENER_DEFAULT_MIGRATION: &str =
     include_str!("../migrations/0013_lan_listener_default.sql");
+const DROP_DEVICE_REVOCATION_MIGRATION: &str =
+    include_str!("../migrations/0014_drop_device_revocation.sql");
 
 const BUSY_TIMEOUT_MS: u64 = 5_000;
 pub(crate) type LegacyTlsCredentials = (Vec<u8>, Vec<u8>);
@@ -850,6 +852,17 @@ fn apply_migrations(connection: &mut Connection) -> Result<(), AppError> {
             )
             .map_err(AppError::Database)?;
     }
+    if version < 14 {
+        transaction
+            .execute_batch(DROP_DEVICE_REVOCATION_MIGRATION)
+            .map_err(AppError::Database)?;
+        transaction
+            .execute(
+                "UPDATE schema_metadata SET value = '14' WHERE key = 'migration_version'",
+                [],
+            )
+            .map_err(AppError::Database)?;
+    }
     transaction.commit().map_err(AppError::Database)
 }
 
@@ -949,7 +962,7 @@ mod tests {
         assert_eq!(repo.load().unwrap(), Settings::default());
         assert_eq!(repo.load().unwrap().history_retention_days, 30);
         assert!(repo.load().unwrap().automatic_device_trust);
-        assert_eq!(repo.migration_version().unwrap(), 13);
+        assert_eq!(repo.migration_version().unwrap(), 14);
         assert_eq!(repo.load().unwrap().listen_address, "0.0.0.0:0");
     }
     #[test]
@@ -969,7 +982,7 @@ mod tests {
 
         let migrated = SettingsRepository::open(db).unwrap();
         assert_eq!(migrated.load().unwrap().listen_address, "0.0.0.0:0");
-        assert_eq!(migrated.migration_version().unwrap(), 13);
+        assert_eq!(migrated.migration_version().unwrap(), 14);
     }
     #[test]
     fn settings_updates_survive_reopening() {
@@ -1065,7 +1078,7 @@ mod tests {
                     |row| row.get::<_, String>(0),
                 )
                 .unwrap(),
-            "13"
+            "14"
         );
         drop(connection);
         assert_eq!(reopened.trusted_peer(&peer.device_id).unwrap(), Some(peer));
@@ -1111,7 +1124,7 @@ mod tests {
                     |row| row.get::<_, String>(0),
                 )
                 .unwrap(),
-            "13"
+            "14"
         );
     }
 

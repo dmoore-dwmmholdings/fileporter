@@ -505,9 +505,6 @@ impl PairingCoordinator {
         let id = sessions.remove(index).0.id;
         self.repository.delete_pending_pairing(&id)
     }
-    pub fn forget(&self, device_id: &str) -> Result<(), AppError> {
-        self.repository.revoke_trusted_peer(device_id, unix_now())
-    }
     pub fn snapshot(&self) -> Result<PairingSnapshot, AppError> {
         let now = SystemTime::now();
         let now_unix = unix_now();
@@ -641,8 +638,7 @@ fn trusted_view(peer: &TrustedPeer) -> TrustedDeviceView {
 mod tests {
     use super::*;
     use crate::secret_store::InMemorySecretStore;
-    use crate::state::{AppState, EnqueuePathsRequest};
-    use std::{fs, sync::Arc};
+    use std::sync::Arc;
 
     fn repository() -> (tempfile::TempDir, Arc<SettingsRepository>) {
         let directory = tempfile::tempdir().unwrap();
@@ -914,8 +910,8 @@ mod tests {
     }
 
     #[test]
-    fn confirmation_commits_peer_and_forget_revokes_enqueue_access() {
-        let (directory, repository) = repository();
+    fn confirmation_commits_the_peer() {
+        let (_directory, repository) = repository();
         let coordinator = PairingCoordinator::open_with_secret_store(
             repository.clone(),
             std::sync::Arc::new(InMemorySecretStore::default()),
@@ -924,25 +920,8 @@ mod tests {
         let pending = authenticated_request(&coordinator);
         let waiting = coordinator.confirm(&pending.id).unwrap();
         assert!(waiting.trusted_device.is_none());
-        let trusted = coordinator.confirm_remote(&pending.id).unwrap().unwrap();
+        coordinator.confirm_remote(&pending.id).unwrap().unwrap();
         assert_eq!(repository.active_trusted_peers().unwrap().len(), 1);
         assert!(repository.pending_pairings().unwrap().is_empty());
-        coordinator.forget(&trusted.device_id).unwrap();
-        assert!(repository.active_trusted_peers().unwrap().is_empty());
-        let source = directory.path().join("notes.txt");
-        fs::write(&source, b"notes").unwrap();
-        drop(coordinator);
-        let state = AppState::new(Arc::try_unwrap(repository).ok().unwrap());
-        assert!(matches!(
-            state.queue_batch(EnqueuePathsRequest {
-                paths: vec![source.display().to_string()],
-                target_device_ids: vec![trusted.device_id],
-                queue_offline: false
-            }),
-            Err(AppError::Validation {
-                code: "unknown_recipient",
-                ..
-            })
-        ));
     }
 }

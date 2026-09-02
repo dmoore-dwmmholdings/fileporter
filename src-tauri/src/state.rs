@@ -835,29 +835,6 @@ impl AppState {
         self.scheduler.wake.notify_one();
         Ok(())
     }
-    pub fn fail_targets_for_revoked_peer(
-        &self,
-        device_id: &str,
-    ) -> Result<(), crate::error::AppError> {
-        for mut record in self.settings.outgoing_batches()? {
-            let mut changed = false;
-            for target in &mut record.targets {
-                if target.peer_device_id == device_id && !is_terminal(&target.state) {
-                    target.state = "failed".into();
-                    target.error_code = Some("recipient_revoked".into());
-                    target.retry_at = None;
-                    self.settings.save_batch_target(target)?;
-                    changed = true;
-                }
-            }
-            if changed {
-                self.finish_batch_if_targets_terminal(&mut record.batch, &record.items)?;
-            }
-        }
-        self.scheduler.wake.notify_one();
-        self.bump_revision();
-        Ok(())
-    }
     fn defer_unavailable_targets(
         &self,
         record: &PersistedBatch,
@@ -873,9 +850,9 @@ impl AppState {
                 continue;
             }
             let peer = self.settings.trusted_peer(&target.peer_device_id)?;
-            let Some(peer) = peer.filter(|peer| peer.revoked_at.is_none()) else {
+            let Some(peer) = peer else {
                 target.state = "failed".into();
-                target.error_code = Some("recipient_revoked".into());
+                target.error_code = Some("recipient_unknown".into());
                 target.retry_at = None;
                 self.settings.save_batch_target(&target)?;
                 terminal_changed = true;
@@ -2097,7 +2074,7 @@ mod tests {
     }
 
     #[test]
-    fn cancellation_and_revocation_stop_waiting_targets() {
+    fn cancellation_stops_waiting_targets() {
         let directory = tempfile::tempdir().unwrap();
         let source = directory.path().join("notes.txt");
         fs::write(&source, b"notes").unwrap();
@@ -2118,22 +2095,6 @@ mod tests {
             state.settings.batch_targets(&cancelled.id).unwrap()[0].state,
             "cancelled"
         );
-        let revoked = state
-            .queue_batch(EnqueuePathsRequest {
-                paths: vec![source.display().to_string()],
-                target_device_ids: vec!["peer-1".into()],
-                queue_offline: true,
-            })
-            .unwrap();
-        state.fail_targets_for_revoked_peer("peer-1").unwrap();
-        let target = state
-            .settings
-            .batch_targets(&revoked.id)
-            .unwrap()
-            .pop()
-            .unwrap();
-        assert_eq!(target.state, "failed");
-        assert_eq!(target.error_code.as_deref(), Some("recipient_revoked"));
     }
 
     #[test]

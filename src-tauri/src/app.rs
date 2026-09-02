@@ -46,7 +46,6 @@ pub fn run() {
             commands::rename_trusted_device,
             commands::confirm_pairing,
             commands::reject_pairing,
-            commands::forget_device,
             commands::show_main_window,
             commands::quit_app
         ])

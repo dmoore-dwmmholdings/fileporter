@@ -102,11 +102,6 @@ pub struct RenameTrustedDeviceInput {
 }
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ForgetDeviceInput {
-    pub device_id: String,
-}
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
 pub struct SendQueuedLoopbackInput {
     pub batch_id: String,
 }
@@ -501,24 +496,6 @@ pub fn reject_pairing(
     let _ = emit_snapshot(&app, &state)?;
     Ok(())
 }
-#[tauri::command]
-pub fn forget_device(
-    app: AppHandle,
-    input: ForgetDeviceInput,
-    state: tauri::State<'_, AppState>,
-) -> Result<(), AppErrorDto> {
-    state
-        .pairing
-        .forget(&input.device_id)
-        .map_err(AppErrorDto::from)?;
-    state
-        .fail_targets_for_revoked_peer(&input.device_id)
-        .map_err(AppErrorDto::from)?;
-    state.bump_revision();
-    let _ = emit_snapshot(&app, &state)?;
-    Ok(())
-}
-
 pub(crate) fn emit_snapshot(app: &AppHandle, state: &AppState) -> Result<AppSnapshot, AppErrorDto> {
     // Notification failure must not alter a completed transfer. The persistent
     // ledger prevents history from being replayed on later snapshots/restarts.

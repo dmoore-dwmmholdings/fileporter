@@ -32,7 +32,6 @@ export const appBridge = {
   renameTrustedDevice: (deviceId: string, alias: string) => invoke<void>('rename_trusted_device', { input: { deviceId, alias } }),
   confirmPairing: (pairingId: string) => invoke<PairingConfirmation>('confirm_pairing', { input: { pairingId } }),
   rejectPairing: (pairingId: string) => invoke<void>('reject_pairing', { input: { pairingId } }),
-  forgetDevice: (deviceId: string) => invoke<void>('forget_device', { input: { deviceId } }),
   enqueuePaths: (paths: string[], targetDeviceIds: string[], queueOffline = false) =>
     invoke<QueuedBatch>('enqueue_paths', { input: { paths, targetDeviceIds, queueOffline } }),
   cancelBatch: (batchId: string) => invoke<BackendAppSnapshot>('cancel_batch', { input: { batchId } }),
