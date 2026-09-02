@@ -1,6 +1,27 @@
 // Exact values emitted by AppState::snapshot in the Rust backend.
 export type DeviceState = 'online' | 'offline';
-export type BatchState = 'queued' | 'waiting' | 'preparing' | 'sending' | 'verifying' | 'complete' | 'partial' | 'paused' | 'failed';
+export type BatchState = 'queued' | 'waiting' | 'preparing' | 'sending' | 'receiving' | 'verifying' | 'complete' | 'partial' | 'paused' | 'cancelled' | 'failed';
+
+/**
+ * The backend serialises the state it persisted, which is not the vocabulary
+ * this contract declares: batches finish as "completed", incoming work runs as
+ * "receiving", and cancelled work is "cancelled". Left untranslated, every
+ * finished transfer fell outside the union — status pills rendered blank and
+ * `state === 'complete'` was never true, so the native file actions could not
+ * be reached at all. Normalise once, here, at the boundary.
+ */
+export function toBatchState(raw: string): BatchState {
+  switch (raw) {
+    case 'completed': return 'complete';
+    case 'complete': return 'complete';
+    case 'receiving': return 'receiving';
+    case 'cancelled': return 'cancelled';
+    case 'queued': case 'waiting': case 'preparing': case 'sending':
+    case 'verifying': case 'partial': case 'paused': case 'failed':
+      return raw;
+    default: return 'failed';
+  }
+}
 export type HistoryDirection = 'incoming' | 'outgoing';
 
 // Mirrors the serde JSON emitted by src-tauri/src/state.rs and identity.rs.
@@ -37,6 +58,9 @@ export function toViewModel(snapshot: BackendAppSnapshot): AppSnapshotViewModel 
     receiveDirectory: snapshot.settings.receiveDirectory, launchAtLogin: snapshot.settings.launchAtLogin, notificationsEnabled: snapshot.settings.notificationsEnabled,
     lifecycle: snapshot.lifecycle, settings: snapshot.settings, network: snapshot.network, about: snapshot.about, devices: snapshot.devices, nearbyDevices: snapshot.nearbyDevices,
     trustedDevices: snapshot.pairing.trustedDevices.map((device) => ({ id: device.deviceId, name: device.alias ?? device.name, lastSeenAt: device.lastSeenAt, certificateFingerprintShort: device.certificateFingerprintShort, autoSend: device.autoSend, endpoint: device.endpoint, state: snapshot.devices.find((presence) => presence.id === device.deviceId)?.state ?? 'offline' })),
-    pendingPairings: snapshot.pairing.pendingPairings, transfers: snapshot.transfers, history: snapshot.history, queuedBatches: snapshot.queuedBatches
+    pendingPairings: snapshot.pairing.pendingPairings,
+    transfers: snapshot.transfers.map((batch) => ({ ...batch, state: toBatchState(batch.state), targets: batch.targets.map((target) => ({ ...target, state: toBatchState(target.state) })) })),
+    history: snapshot.history.map((entry) => ({ ...entry, state: toBatchState(entry.state), items: entry.items.map((item) => ({ ...item, state: toBatchState(item.state) })) })),
+    queuedBatches: snapshot.queuedBatches
   };
 }

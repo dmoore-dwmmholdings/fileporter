@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatPeer, formatWhen } from './format';
+import { formatBytes, formatKind, formatPeer, formatWhen } from './format';
 import type { TrustedDeviceViewModel } from '../types/view-models';
 
 const at = (iso: string) => new Date(iso).getTime();
@@ -43,5 +43,37 @@ describe('formatPeer', () => {
   it('leaves an already-readable name alone', () => {
     expect(formatPeer('Laptop', trusted)).toBe('Laptop');
     expect(formatPeer('Laptop', [])).toBe('Laptop');
+  });
+});
+
+describe('formatBytes', () => {
+  it('reads like a file manager rather than a byte count', () => {
+    expect(formatBytes(0)).toBe('0 B');
+    expect(formatBytes(999)).toBe('999 B');
+    expect(formatBytes(2411724)).toBe('2.4 MB');
+    expect(formatBytes(8555707)).toBe('8.6 MB');
+    expect(formatBytes(45_000_000)).toBe('45 MB');
+    expect(formatBytes(3_200_000_000)).toBe('3.2 GB');
+  });
+
+  it('gives nothing rather than nonsense for a size it cannot use', () => {
+    expect(formatBytes(-1)).toBe('');
+    expect(formatBytes(Number.NaN)).toBe('');
+  });
+});
+
+describe('formatKind', () => {
+  it('names the common types a person actually sends', () => {
+    expect(formatKind('holiday.PNG', 'file')).toBe('PNG image');
+    expect(formatKind('contract.pdf', 'file')).toBe('PDF document');
+    expect(formatKind('Fileporter_0.1.0_x64-setup.exe', 'file')).toBe('Windows installer');
+  });
+
+  it('falls back to the extension, and never mislabels a folder', () => {
+    expect(formatKind('capture.rawthing', 'file')).toBe('RAWTHING file');
+    expect(formatKind('Photos', 'directory')).toBe('Folder');
+    expect(formatKind('LICENSE', 'file')).toBe('File');
+    expect(formatKind('trailing.', 'file')).toBe('File');
+    expect(formatKind('.gitignore', 'file')).toBe('File');
   });
 });

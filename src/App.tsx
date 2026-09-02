@@ -4,6 +4,7 @@ import { MagicSendControl, type MagicChoice } from './components/MagicSendContro
 import { StatusPill } from './components/StatusPill';
 import { DevicesView } from './components/DevicesView';
 import { ActivityView } from './components/ActivityView';
+import { Arrivals } from './components/Arrivals';
 import { appBridge } from './lib/bridge';
 import { formatPeer, formatWhen } from './lib/format';
 import { emptySnapshot, toViewModel, type AppSnapshotViewModel, type BackendAppSnapshot } from './types/view-models';
@@ -176,6 +177,8 @@ export default function App({ initialSnapshot = emptySnapshot }: FileporterAppPr
         <MagicSendControl disabled={false} onChoose={(choice) => { void selectPaths(choice); }} />
         <p className="drop-hint">or drag and drop from your file browser</p>
       </section>
+
+      <Arrivals snapshot={snapshot} />
 
       {notice && <div className="notice" role="status" aria-live="polite"><span>{notice.message}</span>{notice.batchId && <button ref={cancelNoticeRef} type="button" onClick={() => { void cancelQueuedNotice(); }}>Cancel</button>}</div>}
       {stagedPaths.length > 0 && <section className="empty-targets" aria-labelledby="staged-send-heading"><strong id="staged-send-heading">{stagedPaths.length} item{stagedPaths.length === 1 ? '' : 's'} ready to send</strong><span>Choose a trusted device. Items will send automatically when it is available.</span>{offlineTrustedDevices.length ? <div className="staged-recipients" aria-label="Trusted offline recipients">{offlineTrustedDevices.map((device) => <button key={device.id} type="button" className={stagedTargetIds.includes(device.id) ? 'recipient active' : 'recipient'} aria-pressed={stagedTargetIds.includes(device.id)} onClick={() => toggleStagedTarget(device.id)}>{device.name}</button>)}</div> : <span className="muted">Fileporter is looking for your other computers.</span>}<div><button type="button" onClick={() => setScreen('devices')}>View devices</button><button type="button" disabled={!stagedTargetIds.length} onClick={() => { void sendStaged(); }}>Send when available</button><button type="button" className="text-button" onClick={() => { setStagedPaths([]); setStagedTargetIds([]); }}>Clear</button></div></section>}

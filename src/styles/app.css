@@ -216,6 +216,10 @@ button, input, select { font: inherit; color: inherit; }
   80%  { opacity: 1; }
   to   { transform: translate3d(320%, 0, 0); opacity: 0; }
 }
+@keyframes land {
+  from { opacity: 0; transform: translate3d(0, -10px, 0) scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
 @keyframes float {
   50% { transform: translate3d(0, -6px, 0); }
 }
@@ -800,6 +804,75 @@ label { display: grid; gap: var(--s15); }
 .pairing-state { margin-top: var(--s3); font-size: 12px; color: var(--text-faint); }
 .modal-actions { display: flex; gap: var(--s2); justify-content: flex-end; margin-top: var(--s5); }
 .modal-actions .primary-action { width: auto; margin: 0; }
+
+/* -------------------------------------------------------------- arrivals */
+
+.arrivals { margin-top: var(--s5); }
+.arrivals h2 {
+  margin: 0 0 var(--s3);
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.arrival {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-bottom: var(--s2);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-1);
+  /* A landing file should read as an event, not as another list row. */
+  animation: land var(--slow) var(--spring) both;
+  transition: transform var(--fast) var(--ease), box-shadow var(--mid) var(--ease);
+}
+.arrival:nth-of-type(3) { animation-delay: 40ms; }
+.arrival:nth-of-type(4) { animation-delay: 80ms; }
+.arrival:nth-of-type(n+5) { animation-delay: 120ms; }
+.arrival:hover { transform: translateY(-1px); box-shadow: var(--shadow-2); }
+
+.arrival-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-md);
+  color: var(--on-tint);
+  background: var(--accent-tint);
+}
+
+.arrival-detail { display: grid; gap: var(--s05); min-width: 0; }
+.arrival-detail strong { overflow-wrap: anywhere; }
+.arrival-detail .muted { font-size: 12px; }
+.arrival-status { color: var(--on-tint); font-size: 12px; font-weight: 560; }
+.arrival .form-error { margin: 0; font-size: 12px; }
+
+.arrival-actions { display: flex; gap: var(--s2); margin-left: auto; flex: none; }
+.arrival-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s15);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: var(--s2) var(--s3);
+  background: var(--surface-raised);
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 560;
+  cursor: pointer;
+  transition: transform var(--fast) var(--ease), color var(--fast) var(--ease),
+              border-color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.arrival-actions button:hover {
+  color: var(--on-tint);
+  border-color: var(--accent-line);
+  background: var(--accent-tint);
+}
+.arrival-actions button:active { transform: scale(.96); }
+.arrival .unavailable { margin-left: auto; flex: none; }
 
 /* -------------------------------------------------------------- activity */
 

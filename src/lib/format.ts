@@ -48,3 +48,46 @@ export function formatPeer(value: string, trusted: TrustedDeviceViewModel[] = []
   if (value.length <= 20) return value;
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
+
+/** Sizes read the way a file manager writes them, not as raw byte counts. */
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return '';
+  if (bytes < 1000) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let value = bytes / 1000;
+  let unit = 0;
+  while (value >= 1000 && unit < units.length - 1) {
+    value /= 1000;
+    unit += 1;
+  }
+  // One decimal below 10 keeps "1.4 MB" readable without "1.40 MB" noise.
+  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
+}
+
+const KNOWN_TYPES: Record<string, string> = {
+  jpg: 'JPEG image', jpeg: 'JPEG image', png: 'PNG image', gif: 'GIF image',
+  heic: 'HEIC image', webp: 'WebP image', svg: 'SVG image',
+  pdf: 'PDF document', doc: 'Word document', docx: 'Word document',
+  xls: 'Excel workbook', xlsx: 'Excel workbook', ppt: 'Presentation', pptx: 'Presentation',
+  txt: 'Text', md: 'Markdown', rtf: 'Rich text', csv: 'CSV',
+  zip: 'ZIP archive', tar: 'Archive', gz: 'Archive', rar: 'RAR archive', '7z': '7z archive',
+  mp3: 'Audio', wav: 'Audio', flac: 'Audio', m4a: 'Audio',
+  mp4: 'Video', mov: 'Video', mkv: 'Video', avi: 'Video',
+  exe: 'Windows installer', msi: 'Windows installer', dmg: 'Disk image', pkg: 'Installer',
+  app: 'Application', json: 'JSON', xml: 'XML', html: 'HTML',
+};
+
+/** A human label for what arrived, falling back to the bare extension. */
+export function formatKind(displayName: string, kind: string): string {
+  if (kind === 'directory') return 'Folder';
+  const dot = displayName.lastIndexOf('.');
+  if (dot <= 0 || dot === displayName.length - 1) return 'File';
+  const extension = displayName.slice(dot + 1).toLowerCase();
+  return KNOWN_TYPES[extension] ?? `${extension.toUpperCase()} file`;
+}
+
+/** macOS has no cut: Finder moves only on Option-Command-V after a copy. */
+export function isMacLike(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
+}
