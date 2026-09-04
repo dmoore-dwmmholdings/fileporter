@@ -7,7 +7,10 @@ const root = process.cwd();
 const output = join(root, 'THIRD_PARTY_MANIFEST.json');
 const manifests = ['crates/fileporter-protocol/Cargo.toml', 'crates/fileporter-identity/Cargo.toml', 'crates/fileporter-network/Cargo.toml', 'crates/fileporter-transfer/Cargo.toml', 'src-tauri/Cargo.toml'];
 // Permissive licenses present in the locked dependency graphs; unknown or copyleft-only entries fail closed.
-const allowed = new Set(['0BSD', 'Apache-2.0', 'Apache-2.0 WITH LLVM-exception', 'BSD-1-Clause', 'BSD-2-Clause', 'BSD-3-Clause', 'BlueOak-1.0.0', 'CC-BY-4.0', 'CC0-1.0', 'ISC', 'MIT', 'MIT-0', 'MPL-2.0', 'Python-2.0', 'Unicode-3.0', 'Unlicense', 'Zlib']);
+// OFL-1.1 is the SIL Open Font License, which permits bundling and redistributing
+// an unmodified font inside an application. It covers the IBM Plex faces the UI
+// ships, which are self-hosted because the app's CSP forbids remote stylesheets.
+const allowed = new Set(['0BSD', 'Apache-2.0', 'Apache-2.0 WITH LLVM-exception', 'BSD-1-Clause', 'BSD-2-Clause', 'BSD-3-Clause', 'BlueOak-1.0.0', 'CC-BY-4.0', 'CC0-1.0', 'ISC', 'MIT', 'MIT-0', 'MPL-2.0', 'OFL-1.1', 'Python-2.0', 'Unicode-3.0', 'Unlicense', 'Zlib']);
 // Cargo metadata occasionally uses slash-separated alternatives. An OR branch is
 // acceptable when every license it requires is allowlisted; a copyleft alternative
 // does not invalidate a separately permissive option.

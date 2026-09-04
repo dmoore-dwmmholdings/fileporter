@@ -15,6 +15,7 @@
       "MIT",
       "MIT-0",
       "MPL-2.0",
+      "OFL-1.1",
       "Python-2.0",
       "Unicode-3.0",
       "Unlicense",
@@ -502,6 +503,13 @@
         "source": "registry+https://github.com/rust-lang/crates.io-index"
       },
       {
+        "name": "core-foundation",
+        "version": "0.9.4",
+        "license": "MIT OR Apache-2.0",
+        "repository": "https://github.com/servo/core-foundation-rs",
+        "source": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      {
         "name": "core-graphics-types",
         "version": "0.2.0",
         "license": "MIT OR Apache-2.0",
@@ -965,7 +973,7 @@
       },
       {
         "name": "fileporter",
-        "version": "0.1.0",
+        "version": "0.1.2",
         "license": "MIT OR Apache-2.0",
         "repository": null,
         "source": "workspace"
@@ -2501,6 +2509,27 @@
         "version": "1.2.0",
         "license": "MIT OR Apache-2.0",
         "repository": "https://github.com/bluss/scopeguard",
+        "source": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      {
+        "name": "security-framework-sys",
+        "version": "2.17.0",
+        "license": "MIT OR Apache-2.0",
+        "repository": "https://github.com/kornelski/rust-security-framework",
+        "source": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      {
+        "name": "security-framework",
+        "version": "2.11.1",
+        "license": "MIT OR Apache-2.0",
+        "repository": "https://github.com/kornelski/rust-security-framework",
+        "source": "registry+https://github.com/rust-lang/crates.io-index"
+      },
+      {
+        "name": "security-framework",
+        "version": "3.7.0",
+        "license": "MIT OR Apache-2.0",
+        "repository": "https://github.com/kornelski/rust-security-framework",
         "source": "registry+https://github.com/rust-lang/crates.io-index"
       },
       {
@@ -4319,15 +4348,8 @@
         "sourceLicenseFile": "LICENSE.md"
       },
       {
-        "name": "@esbuild/win32-x64",
+        "name": "@esbuild/darwin-arm64",
         "version": "0.21.5",
-        "license": "MIT",
-        "repository": "git+https://github.com/evanw/esbuild.git",
-        "sourceLicenseFile": null
-      },
-      {
-        "name": "@esbuild/win32-x64",
-        "version": "0.25.12",
         "license": "MIT",
         "repository": "git+https://github.com/evanw/esbuild.git",
         "sourceLicenseFile": null
@@ -4393,6 +4415,20 @@
         "version": "0.4.1",
         "license": "Apache-2.0",
         "repository": "git+https://github.com/eslint/rewrite.git",
+        "sourceLicenseFile": "LICENSE"
+      },
+      {
+        "name": "@fontsource/ibm-plex-mono",
+        "version": "5.3.0",
+        "license": "OFL-1.1",
+        "repository": "git+https://github.com/fontsource/font-files.git",
+        "sourceLicenseFile": "LICENSE"
+      },
+      {
+        "name": "@fontsource/ibm-plex-sans",
+        "version": "5.3.0",
+        "license": "OFL-1.1",
+        "repository": "git+https://github.com/fontsource/font-files.git",
         "sourceLicenseFile": "LICENSE"
       },
       {
@@ -4473,14 +4509,7 @@
         "sourceLicenseFile": "LICENSE"
       },
       {
-        "name": "@rollup/rollup-win32-x64-gnu",
-        "version": "4.63.1",
-        "license": "MIT",
-        "repository": "git+https://github.com/rollup/rollup.git",
-        "sourceLicenseFile": null
-      },
-      {
-        "name": "@rollup/rollup-win32-x64-msvc",
+        "name": "@rollup/rollup-darwin-arm64",
         "version": "4.63.1",
         "license": "MIT",
         "repository": "git+https://github.com/rollup/rollup.git",
@@ -4494,7 +4523,7 @@
         "sourceLicenseFile": "LICENSE_APACHE-2.0"
       },
       {
-        "name": "@tauri-apps/cli-win32-x64-msvc",
+        "name": "@tauri-apps/cli-darwin-arm64",
         "version": "2.11.4",
         "license": "Apache-2.0 OR MIT",
         "repository": "git+https://github.com/tauri-apps/tauri.git",
@@ -5089,13 +5118,6 @@
         "sourceLicenseFile": "LICENSE.md"
       },
       {
-        "name": "esbuild",
-        "version": "0.25.12",
-        "license": "MIT",
-        "repository": "git+https://github.com/evanw/esbuild.git",
-        "sourceLicenseFile": "LICENSE.md"
-      },
-      {
         "name": "escalade",
         "version": "3.2.0",
         "license": "MIT",
@@ -5269,6 +5291,13 @@
         "license": "MIT",
         "repository": "git://github.com/form-data/form-data.git",
         "sourceLicenseFile": "License"
+      },
+      {
+        "name": "fsevents",
+        "version": "2.3.3",
+        "license": "MIT",
+        "repository": "https://github.com/fsevents/fsevents.git",
+        "sourceLicenseFile": "LICENSE"
       },
       {
         "name": "function-bind",
@@ -6050,13 +6079,6 @@
       {
         "name": "vite",
         "version": "5.4.21",
-        "license": "MIT",
-        "repository": "git+https://github.com/vitejs/vite.git",
-        "sourceLicenseFile": "LICENSE.md"
-      },
-      {
-        "name": "vite",
-        "version": "6.4.3",
         "license": "MIT",
         "repository": "git+https://github.com/vitejs/vite.git",
         "sourceLicenseFile": "LICENSE.md"

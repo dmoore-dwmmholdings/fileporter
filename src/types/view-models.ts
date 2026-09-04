@@ -45,16 +45,16 @@ export interface BackendAppSnapshot {
 }
 export interface TrustedDeviceViewModel { id: string; name: string; lastSeenAt: number | null; state: DeviceState; certificateFingerprintShort: string; autoSend: boolean; endpoint: string | null; }
 export interface AppSnapshotViewModel {
-  revision: number; localDeviceName: string; onboardingComplete: boolean; receiveDirectory: string | null; launchAtLogin: boolean; notificationsEnabled: boolean;
+  revision: number; localDeviceName: string; localDeviceId: string; onboardingComplete: boolean; receiveDirectory: string | null; launchAtLogin: boolean; notificationsEnabled: boolean;
   lifecycle: LifecycleSnapshot; settings: SettingsSnapshot; network: NetworkDiagnostics; about: AboutSnapshot; devices: BackendDeviceViewModel[]; nearbyDevices: NearbyDeviceViewModel[]; trustedDevices: TrustedDeviceViewModel[]; pendingPairings: PendingPairing[]; transfers: TransferBatchViewModel[]; history: HistoryItemViewModel[]; queuedBatches: QueuedBatch[];
 }
 export const emptySnapshot: AppSnapshotViewModel = {
-  revision: 0, localDeviceName: 'This device', onboardingComplete: false, receiveDirectory: null, launchAtLogin: true, notificationsEnabled: true,
+  revision: 0, localDeviceName: 'This device', localDeviceId: '', onboardingComplete: false, receiveDirectory: null, launchAtLogin: true, notificationsEnabled: true,
   lifecycle: { windowVisible: false, receivingEnabled: true, listening: false, receiving: false, shuttingDown: false }, settings: { deviceName: '', receiveDirectory: null, onboardingComplete: false, launchAtLogin: true, notificationsEnabled: true, receivingEnabled: true, automaticDeviceTrust: true, preferredListenAddress: '0.0.0.0:0', preferredListenPort: 0, historyRetentionDays: 30 }, network: { listening: false, boundEndpoint: null, preferredListenAddress: '0.0.0.0:0', trustedOnlineEndpoints: [], mdnsState: 'unknown', localInterfaceSummaries: [], recentErrorCodes: [] }, about: { appVersion: '0.1.0', protocolVersion: 1, logsAvailable: false, databaseMigrationVersion: 0, ownedStagingBytes: 0 }, devices: [], nearbyDevices: [], trustedDevices: [], pendingPairings: [], transfers: [], history: [], queuedBatches: []
 };
 export function toViewModel(snapshot: BackendAppSnapshot): AppSnapshotViewModel {
   return {
-    revision: snapshot.revision, localDeviceName: snapshot.localDeviceName || snapshot.settings.deviceName || 'This device', onboardingComplete: snapshot.settings.onboardingComplete,
+    revision: snapshot.revision, localDeviceName: snapshot.localDeviceName || snapshot.settings.deviceName || 'This device', localDeviceId: snapshot.pairing.localDeviceId, onboardingComplete: snapshot.settings.onboardingComplete,
     receiveDirectory: snapshot.settings.receiveDirectory, launchAtLogin: snapshot.settings.launchAtLogin, notificationsEnabled: snapshot.settings.notificationsEnabled,
     lifecycle: snapshot.lifecycle, settings: snapshot.settings, network: snapshot.network, about: snapshot.about, devices: snapshot.devices, nearbyDevices: snapshot.nearbyDevices,
     trustedDevices: snapshot.pairing.trustedDevices.map((device) => ({ id: device.deviceId, name: device.alias ?? device.name, lastSeenAt: device.lastSeenAt, certificateFingerprintShort: device.certificateFingerprintShort, autoSend: device.autoSend, endpoint: device.endpoint, state: snapshot.devices.find((presence) => presence.id === device.deviceId)?.state ?? 'offline' })),

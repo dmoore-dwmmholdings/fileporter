@@ -62,7 +62,7 @@ fn recent_item_id(menu_id: &str) -> Option<&str> {
 
 pub(crate) fn status_text(snapshot: &crate::state::AppSnapshot) -> String {
     format!(
-        "{} device(s) connected; receiving {}",
+        "{} pad(s) linked; receiving {}",
         snapshot
             .devices
             .iter()
@@ -98,7 +98,7 @@ fn refresh_recent_submenu(app: &AppHandle<Wry>, snapshot: &crate::state::AppSnap
     let model = recent_received_model(&snapshot.history);
     let _ = submenu.set_enabled(!model.is_empty());
     if model.is_empty() {
-        if let Ok(empty) = MenuItemBuilder::with_id("recent-empty", "No recent received items")
+        if let Ok(empty) = MenuItemBuilder::with_id("recent-empty", "Nothing has arrived yet")
             .enabled(false)
             .build(app)
         {
@@ -128,13 +128,13 @@ pub fn build(app: &AppHandle<Wry>) -> tauri::Result<()> {
         .and_then(|state| state.settings.load().ok())
         .map(|settings| settings.receiving_enabled)
         .unwrap_or(false);
-    let receiving = CheckMenuItemBuilder::with_id(MENU_RECEIVING, "Receiving enabled")
+    let receiving = CheckMenuItemBuilder::with_id(MENU_RECEIVING, "Accept inbound transports")
         .checked(receiving_enabled)
         .build(app)?;
     let _ = STATUS_ITEM.set(status.clone());
     let _ = RECEIVING_ITEM.set(receiving.clone());
-    let settings = MenuItemBuilder::with_id(MENU_SETTINGS, "Settings").build(app)?;
-    let recent = SubmenuBuilder::with_id(app, "recent-received", "Recent received")
+    let settings = MenuItemBuilder::with_id(MENU_SETTINGS, "Config").build(app)?;
+    let recent = SubmenuBuilder::with_id(app, "recent-received", "Recent arrivals")
         .enabled(false)
         .build()?;
     let _ = RECENT_SUBMENU.set(recent.clone());
