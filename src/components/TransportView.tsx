@@ -132,6 +132,8 @@ export function TransportView({ snapshot, selectedDeviceIds, onToggleDevice, onP
       >
         <Floor />
 
+        {/* The whole area is the click and drop target, sitting behind the
+            composition so the chips stay independently clickable. */}
         <button
           className="q-stage"
           type="button"
@@ -139,12 +141,7 @@ export function TransportView({ snapshot, selectedDeviceIds, onToggleDevice, onP
           aria-expanded={menuOpen}
           aria-label="Send files or folders"
           onClick={() => setMenuOpen((open) => !open)}
-        >
-          <span className="beam beam-o" aria-hidden="true" />
-          <span className="beam beam-m" aria-hidden="true" />
-          <span className="ring" aria-hidden="true" />
-          <TransportPad className="stage-pad" />
-        </button>
+        />
 
         <div className="stage-head">
           <div className="q-headline fade">
@@ -181,7 +178,7 @@ export function TransportView({ snapshot, selectedDeviceIds, onToggleDevice, onP
           </div>
         )}
 
-        <div className="stage-deck" aria-hidden={packets.length === 0}>
+        <div className="stage-deck">
           {packets.map((packet, index) => (
             <span className={`pkt p${index + 1}`} key={packet.key}>
               <FileGlyph kind={packet.glyph} />
@@ -190,10 +187,25 @@ export function TransportView({ snapshot, selectedDeviceIds, onToggleDevice, onP
             </span>
           ))}
         </div>
+
+        {/* Beam, ring and deck are sized from the pad, so the transporter scales
+            as one object instead of drifting apart in a large window. */}
+        <div className="stage-rig">
+          <span className="rig-glow" aria-hidden="true" />
+          <span className="beam beam-o" aria-hidden="true" />
+          <span className="beam beam-m" aria-hidden="true" />
+          <span className="ring" aria-hidden="true" />
+          <TransportPad className="stage-pad" />
+        </div>
       </div>
 
       <div className="q-foot">
-        {arrivals.map((arrival) => <ArrivalRow key={arrival.item.itemId} item={arrival.item} from={arrival.from} />)}
+        {arrivals.length > 0 && (
+          <div className="arrivals">
+            <span className="arrivals-label">Just arrived</span>
+            {arrivals.map((arrival) => <ArrivalRow key={arrival.item.itemId} item={arrival.item} from={arrival.from} />)}
+          </div>
+        )}
         <div className="q-spacer" />
         <span className="tagline">Encrypted · verified · never leaves this network</span>
       </div>

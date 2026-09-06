@@ -187,7 +187,7 @@ function shortId(id: string): string {
 
 function Diagnostics({ snapshot }: { snapshot: AppSnapshotViewModel }) {
   return (
-    <div className="diag fade">
+    <div className="diag-group fade">
       <details className="diag">
         <summary>Network diagnostics</summary>
         <dl>

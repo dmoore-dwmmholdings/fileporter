@@ -222,6 +222,14 @@ it('reports a clipboard failure rather than implying the file is ready to paste'
   expect(await screen.findByText('Could not copy that file')).toBeVisible();
 });
 
+it('labels the arrivals strip so a bare file name is not left to explain itself', async () => {
+  const history = [received([{ itemId: 'item-1', displayName: 'photo.jpg', kind: 'file', size: 2048, state: 'complete' as const, available: true }])];
+  vi.spyOn(appBridge, 'getAppSnapshot').mockResolvedValue({ ...base, history });
+  render(<App />);
+  expect(await screen.findByText('Just arrived')).toBeVisible();
+  expect(screen.getByText('photo.jpg')).toBeVisible();
+});
+
 it('offers no arrival actions for an output that is no longer on disk', async () => {
   const history = [received([{ itemId: 'item-1', displayName: 'gone.txt', kind: 'file', size: 10, state: 'complete' as const, available: false }])];
   vi.spyOn(appBridge, 'getAppSnapshot').mockResolvedValue({ ...base, history });
