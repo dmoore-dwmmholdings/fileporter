@@ -1,0 +1,188 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #74e6a0; } a:hover { color: #a8f5c6; }
+    .q * { box-sizing: border-box; }
+    .q button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+    .q input { font: inherit; color: inherit; }
+    .mono { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+
+    .nav { position: relative; font-size: 13px; color: #7f9689; padding-bottom: 3px; transition: color 160ms; }
+    .nav:hover { color: #d6e5db; }
+    .nav.on { color: #eaf6ef; }
+    .nav.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--acc, #74e6a0); }
+
+    .q-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 220px; pointer-events: none;
+      background: radial-gradient(64% 100% at 50% 132%, rgba(120,230,160,.08), transparent 72%); }
+
+    .field { width: 100%; border: 0; border-bottom: 1px solid rgba(120,230,160,.22); background: none;
+      outline: none; padding: 5px 0; transition: border-color 200ms; }
+    .field:focus { border-color: var(--acc, #74e6a0); }
+    .lbl { font-size: 12px; color: #8aa398; }
+    .hint { font-size: 11.5px; line-height: 1.5; color: #6f8579; }
+
+    .sw { position: relative; width: 34px; height: 18px; flex-shrink: 0; border-radius: 999px;
+      transition: background 160ms, box-shadow 160ms; }
+    .sw i { position: absolute; top: 3px; width: 12px; height: 12px; border-radius: 50%;
+      transition: left 180ms cubic-bezier(.22,1,.36,1), background 160ms; }
+    .tog { display: flex; align-items: flex-start; gap: 13px; padding: 9px 0; text-align: left; transition: opacity 160ms; }
+    .tog:hover .sw { box-shadow: inset 0 0 0 1px var(--acc, #74e6a0); }
+
+    .chip { transition: color 160ms, box-shadow 160ms, background 160ms; }
+    .chip:hover { box-shadow: inset 0 0 0 1px rgba(120,230,160,.5); color: #d6e5db; }
+    .ret { transition: color 160ms; }
+    .ret:hover { color: #d6e5db; }
+    .fade { animation: fade 600ms ease both; }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  </style>
+</helmet>
+
+<div class="q" style="width: 1120px; height: 760px; position: relative; overflow: hidden; background: #0a100d; color: #eaf6ef; font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; --acc: {{accent}}">
+  <span class="q-floor"></span>
+
+  <header style="position: relative; z-index: 4; display: flex; align-items: center; gap: 26px; padding: 22px 28px">
+    <span style="display: flex; align-items: center; gap: 9px">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="{{accent}}" stroke-width="1.2">
+        <ellipse cx="10" cy="15" rx="8" ry="3"></ellipse><path d="M10 12V2m0 0L6.5 5.5M10 2l3.5 3.5"></path>
+      </svg>
+      <span style="font-size: 13px; font-weight: 500; letter-spacing: -.01em">Fileporter</span>
+    </span>
+    <nav style="display: flex; gap: 20px">
+      <button class="nav" type="button">Transport</button>
+      <button class="nav" type="button">Pads</button>
+      <button class="nav" type="button">Log</button>
+      <button class="nav on" type="button">Config</button>
+    </nav>
+    <div style="flex-grow: 1"></div>
+    <span style="display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: #8aa398">
+      Workshop iMac
+      <span style="width: 1px; height: 11px; background: rgba(120,230,160,.24)"></span>
+      <span style="width: 5px; height: 5px; border-radius: 50%; background: {{accent}}"></span>{{syncLine}}
+    </span>
+  </header>
+
+  <div style="position: absolute; left: 0; right: 0; top: 84px; bottom: 96px; display: flex; flex-direction: column; justify-content: center; gap: 44px">
+  <div class="fade" style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 11px">
+    <h1 style="margin: 0; font-size: 44px; font-weight: 300; letter-spacing: -.032em">This pad.</h1>
+    <p style="margin: 0; font-size: 14.5px; font-weight: 300; color: #8aa398">Changes apply together. The folder and the address are checked before anything is saved.</p>
+  </div>
+
+  <div class="fade" style="position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; padding: 0 90px">
+
+    <div style="display: flex; flex-direction: column; gap: 24px">
+      <label style="display: flex; flex-direction: column; gap: 7px">
+        <span class="lbl">Name other pads see</span>
+        <input class="field" value="Workshop iMac" maxlength="48" style="font-size: 15px" />
+        <span class="hint">Ed25519 identity <span class="mono" style="color: {{accent}}">A41C · 90FE</span>, pinned by your other pads.</span>
+      </label>
+
+      <label style="display: flex; flex-direction: column; gap: 7px">
+        <span class="lbl">Where arrivals land</span>
+        <span style="display: flex; align-items: baseline; gap: 12px">
+          <input class="field mono" value="/Users/dmoore/Fileporter" style="font-size: 13.5px" />
+          <button class="chip" type="button" style="flex-shrink: 0; padding: 4px 13px; border-radius: 999px; font-size: 12.5px; color: #8aa398; box-shadow: inset 0 0 0 1px rgba(120,230,160,.24)">Choose</button>
+        </span>
+        <span class="hint">Nothing is ever overwritten. A name that already exists lands beside it, numbered.</span>
+      </label>
+
+      <label style="display: flex; flex-direction: column; gap: 7px">
+        <span class="lbl">Preferred listen address</span>
+        <input class="field mono" value="0.0.0.0:48721" style="font-size: 13.5px" />
+        <span class="hint">Loopback or private ranges only. Port 0 lets the system choose.</span>
+      </label>
+
+      <div style="display: flex; flex-direction: column; gap: 9px">
+        <span class="lbl">Keep the log for</span>
+        <div style="display: flex; gap: 20px">
+          <sc-for list="{{retention}}" as="r" hint-placeholder-count="4">
+            <button class="ret" type="button" style="{{r.style}}" onClick="{{r.pick}}">{{r.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 0">
+      <sc-for list="{{toggles}}" as="t" hint-placeholder-count="5">
+        <button class="tog" type="button" onClick="{{t.flip}}">
+          <span class="sw" style="{{t.sw}}"><i style="{{t.knob}}"></i></span>
+          <span style="display: flex; flex-direction: column; gap: 3px">
+            <span style="font-size: 14px; color: #eaf6ef">{{t.label}}</span>
+            <span class="hint">{{t.note}}</span>
+          </span>
+        </button>
+      </sc-for>
+    </div>
+  </div>
+
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 18px; padding: 0 28px 26px">
+    <span style="font-size: 12px; color: #8aa398">Listening on <span class="mono" style="color: #b3c9bd">192.168.1.18:48721</span></span>
+    <span style="font-size: 12px; color: #8aa398">Beacon advertising</span>
+    <span style="font-size: 12px; color: #8aa398">2 pads linked</span>
+    <button class="chip" type="button" style="padding: 4px 12px; border-radius: 999px; font-size: 12px; color: #8aa398; box-shadow: inset 0 0 0 1px rgba(120,230,160,.2)">Logs</button>
+    <div style="flex-grow: 1"></div>
+    <span style="{{footStyle}}">{{footNote}}</span>
+    <button class="chip" type="button" style="padding: 6px 16px; border-radius: 999px; font-size: 13px; color: #8aa398; box-shadow: inset 0 0 0 1px rgba(120,230,160,.24)">Discard</button>
+    <button type="button" style="{{applyStyle}}">Apply</button>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#74e6a0","options":["#74e6a0","#5ddc8f","#9cf5bd","#3fcf7c"]},"$preview":{"width":1120,"height":760}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { receive: true, autoTrust: true, launch: true, notify: true, tray: true, retention: 30, dirty: false };
+  }
+  flip(k) { const n = {}; n[k] = !this.state[k]; n.dirty = true; this.setState(n); }
+  renderVals() {
+    const acc = this.props.accent ?? '#74e6a0';
+    const t = (key, label, note) => {
+      const on = this.state[key];
+      return {
+        label: label, note: note, flip: () => this.flip(key),
+        sw: on ? 'background: rgba(120,230,160,.22); box-shadow: inset 0 0 0 1px ' + acc + ';'
+               : 'background: rgba(120,230,160,.05); box-shadow: inset 0 0 0 1px rgba(120,230,160,.28);',
+        knob: on ? 'left: 19px; background: ' + acc + ';' : 'left: 3px; background: #8aa398;'
+      };
+    };
+    const dirty = this.state.dirty;
+    return {
+      accent: acc,
+      syncLine: dirty ? 'unapplied changes' : 'in sync',
+      toggles: [
+        t('receive', 'Accept inbound transports', 'Turn off and this pad stays visible but reassembles nothing.'),
+        t('autoTrust', 'Link authenticated pads automatically', 'Off requires a matching code on both pads before a link is kept.'),
+        t('launch', 'Bring the pad online at sign-in', 'Fileporter runs in the tray so transports land while the window is closed.'),
+        t('notify', 'Notify me when something arrives', 'A system notification naming what arrived and from which pad.'),
+        t('tray', 'Keep receiving after the window closes', 'Closing the window parks Fileporter in the tray instead of quitting.')
+      ],
+      retention: [7, 30, 90, 0].map((d) => ({
+        label: d === 0 ? 'Forever' : d + ' days',
+        pick: () => this.setState({ retention: d, dirty: true }),
+        style: 'font-size: 13.5px; padding-bottom: 3px; '
+          + (this.state.retention === d
+            ? 'color: #eaf6ef; box-shadow: inset 0 -1px 0 ' + acc + ';'
+            : 'color: #7f9689;')
+      })),
+      footNote: dirty ? 'Not applied yet' : 'Everything here is in use',
+      footStyle: 'font-size: 12.5px; color: ' + (dirty ? '#e0c56a' : '#6f8579') + ';',
+      applyStyle: 'padding: 6px 20px; border-radius: 999px; font-size: 13px; font-weight: 500; '
+        + (dirty ? 'color: #071008; background: ' + acc + ';'
+                 : 'color: #6f8579; box-shadow: inset 0 0 0 1px rgba(120,230,160,.18);')
+    };
+  }
+}
+</script>
+</body>
+</html>

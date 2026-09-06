@@ -1,0 +1,158 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #6ee7a8; } a:hover { color: #a7f3c8; }
+    .au * { box-sizing: border-box; }
+    .au button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+    .au input { font: inherit; color: inherit; }
+    .au-glow { position: absolute; inset: -30% -10% auto 40%; height: 70%;
+      background: radial-gradient(50% 60% at 50% 30%, var(--acc, #4ade80) 0%, transparent 70%);
+      opacity: .11; filter: blur(70px); pointer-events: none; }
+    .au-grain { position: absolute; inset: 0; pointer-events: none; opacity: .5;
+      background-image: radial-gradient(rgba(255,255,255,.045) 1px, transparent 1px); background-size: 3px 3px; }
+    .au-nav .on { background: rgba(255,255,255,.07); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+    .au-row { transition: transform 180ms cubic-bezier(.22,1,.36,1), background 180ms; }
+    .au-row:hover { transform: translateX(2px); background: rgba(255,255,255,.055); }
+    .au-btn { transition: transform 140ms cubic-bezier(.22,1,.36,1), background 140ms; }
+    .au-btn:hover { transform: translateY(-1px); background: rgba(255,255,255,.1); }
+    .au-btn:active { transform: none; }
+    .au-enter { animation: au-in 620ms cubic-bezier(.22,1,.36,1) both; }
+    @keyframes au-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    .au-pulse { animation: au-pulse 2.4s ease-out infinite; }
+    @keyframes au-pulse { 0% { transform: scale(.6); opacity: .55; } 100% { transform: scale(2.6); opacity: 0; } }
+    .au-scan { animation: au-scan 3.2s linear infinite; transform-origin: 50% 50%; }
+    @keyframes au-scan { to { transform: rotate(360deg); } }
+    .au-orbit { animation: au-scan 22s linear infinite; transform-origin: 50% 50%; }
+    .au-field:focus-within { box-shadow: inset 0 0 0 1px var(--acc, #4ade80); }
+  </style>
+</helmet>
+
+<div class="au" style="width: 1120px; height: 760px; position: relative; overflow: hidden; background: #070b09; color: #e8f2ec; font-family: 'Space Grotesk', 'Helvetica Neue', Helvetica, Arial, sans-serif; --acc: {{accent}}">
+  <div class="au-glow"></div>
+  <div class="au-grain"></div>
+
+  <header style="position: relative; display: flex; align-items: center; gap: 24px; height: 60px; padding: 0 26px; border-bottom: 1px solid rgba(255,255,255,.05)">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="1.6" stroke-linecap="round">
+        <circle cx="12" cy="12" r="9"></circle><path d="M12 16V8m0 0-3.2 3.2M12 8l3.2 3.2"></path>
+      </svg>
+      <span style="font-size: 14px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase">Fileporter</span>
+    </div>
+    <nav class="au-nav" style="display: flex; gap: 2px; margin-left: 10px; padding: 3px; border-radius: 999px; background: rgba(255,255,255,.03)">
+      <button style="padding: 7px 16px; border-radius: 999px; font-size: 13px; color: rgba(232,242,236,.5)">Send</button>
+      <button class="on" style="padding: 7px 16px; border-radius: 999px; font-size: 13px; font-weight: 500">Devices</button>
+      <button style="padding: 7px 16px; border-radius: 999px; font-size: 13px; color: rgba(232,242,236,.5)">Activity</button>
+    </nav>
+    <div style="flex-grow: 1"></div>
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: rgba(232,242,236,.6)">
+      <span style="width: 6px; height: 6px; border-radius: 50%; background: {{accent}}; box-shadow: 0 0 10px {{accent}}"></span>
+      Listening · 2 online
+    </div>
+  </header>
+
+  <div style="position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 34px; padding: 30px 26px">
+
+    <!-- left: trusted -->
+    <section class="au-enter" style="display: flex; flex-direction: column; gap: 14px">
+      <div>
+        <h1 style="margin: 0; font-size: 26px; font-weight: 500; letter-spacing: -.02em">Devices</h1>
+        <p style="margin: 6px 0 0; font-size: 13.5px; color: rgba(232,242,236,.45); max-width: 44ch">Fileporter finds and securely remembers your other computers on this private network.</p>
+      </div>
+      <h2 style="margin: 12px 0 0; font-size: 10.5px; font-weight: 500; letter-spacing: .18em; color: rgba(232,242,236,.35)">TRUSTED</h2>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <sc-for list="{{trusted}}" as="t" hint-placeholder-count="3">
+          <article class="au-row" style="display: flex; align-items: center; gap: 13px; padding: 14px 14px 14px 16px; border-radius: 14px; background: rgba(255,255,255,.035); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05)">
+            <span style="{{t.dotWrap}}">
+              <span style="{{t.dot}}"></span>
+            </span>
+            <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1; min-width: 0">
+              <strong style="font-size: 14px; font-weight: 500">{{t.name}}</strong>
+              <span style="{{t.stateStyle}}">{{t.state}}</span>
+            </div>
+            <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: rgba(232,242,236,.3)">{{t.fp}}</span>
+            <button class="au-btn" style="padding: 6px 12px; border-radius: 999px; font-size: 12px; background: rgba(255,255,255,.06)">Rename</button>
+          </article>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- right: nearby + manual -->
+    <section class="au-enter" style="display: flex; flex-direction: column; gap: 16px">
+      <div style="position: relative; display: flex; align-items: center; gap: 18px; padding: 20px; border-radius: 18px; overflow: hidden; background: rgba(255,255,255,.03); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05)">
+        <div style="position: relative; width: 92px; height: 92px; flex-shrink: 0">
+          <svg width="92" height="92" viewBox="0 0 92 92" fill="none">
+            <circle cx="46" cy="46" r="44" stroke="rgba(255,255,255,.07)"></circle>
+            <circle cx="46" cy="46" r="29" stroke="rgba(255,255,255,.06)"></circle>
+            <circle cx="46" cy="46" r="14" stroke="rgba(255,255,255,.05)"></circle>
+            <g class="au-scan"><path d="M46 46 46 2" stroke="{{accent}}" stroke-width="1.4" opacity=".8"></path></g>
+            <g class="au-orbit"><circle cx="46" cy="17" r="3" fill="{{accent}}"></circle></g>
+            <circle cx="46" cy="46" r="3.5" fill="{{accent}}"></circle>
+          </svg>
+          <span class="au-pulse" style="position: absolute; inset: 34px; border-radius: 50%; box-shadow: 0 0 0 1px {{accent}}"></span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 5px">
+          <strong style="font-size: 15px; font-weight: 500">Scanning this network</strong>
+          <span style="font-size: 13px; color: rgba(232,242,236,.45); max-width: 30ch">New Fileporter computers appear here and pair themselves.</span>
+        </div>
+      </div>
+
+      <h2 style="margin: 4px 0 0; font-size: 10.5px; font-weight: 500; letter-spacing: .18em; color: rgba(232,242,236,.35)">NEARBY</h2>
+      <article class="au-row" style="display: flex; align-items: center; gap: 13px; padding: 14px 14px 14px 16px; border-radius: 14px; background: rgba(255,255,255,.035); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05)">
+        <span style="display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9px; background: rgba(255,255,255,.05); color: {{accent}}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"></path><circle cx="12" cy="19.5" r="1.2" fill="currentColor"></circle></svg>
+        </span>
+        <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1">
+          <strong style="font-size: 14px; font-weight: 500">Kitchen mini</strong>
+          <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: rgba(232,242,236,.35)">192.168.1.42:48721 · protocol 1</span>
+        </div>
+        <span style="font-size: 12.5px; color: {{accent}}">Connecting securely…</span>
+      </article>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 18px; background: rgba(255,255,255,.025); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05)">
+        <strong style="font-size: 13.5px; font-weight: 500">Connect by address</strong>
+        <span style="font-size: 12.5px; color: rgba(232,242,236,.4); max-width: 42ch">Use this when your network blocks discovery. Trust is recorded after identity proof.</span>
+        <div class="au-field" style="display: flex; gap: 8px; padding: 5px 5px 5px 14px; border-radius: 12px; background: rgba(0,0,0,.3); box-shadow: inset 0 0 0 1px rgba(255,255,255,.07)">
+          <input value="192.168.1.24:48721" style="flex-grow: 1; border: 0; background: none; outline: none; font-family: ui-monospace, Menlo, monospace; font-size: 13px" />
+          <button class="au-btn" style="padding: 8px 16px; border-radius: 9px; font-size: 12.5px; font-weight: 500; color: #071008; background: {{accent}}">Connect</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#4ade80","options":["#4ade80","#34d399","#86efac","#22c55e"]},"$preview":{"width":1120,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const acc = this.props.accent ?? '#4ade80';
+    const raw = [
+      { name: 'MacBook Pro', online: true, state: 'Online · ready to receive', fp: '7F2A · C41E' },
+      { name: 'Studio', online: true, state: 'Online · ready to receive', fp: '19BD · 08A6' },
+      { name: 'ThinkPad', online: false, state: 'Offline — seen yesterday', fp: 'D3C0 · 5511' }
+    ];
+    return {
+      accent: acc,
+      trusted: raw.map((t) => ({
+        name: t.name,
+        state: t.state,
+        fp: t.fp,
+        dotWrap: 'display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9px; background: rgba(255,255,255,.05);',
+        dot: 'width: 8px; height: 8px; border-radius: 50%; background: ' + (t.online ? acc : 'rgba(232,242,236,.22)') + ';'
+          + (t.online ? ' box-shadow: 0 0 12px ' + acc + ';' : ''),
+        stateStyle: 'font-size: 12px; color: ' + (t.online ? 'rgba(232,242,236,.5)' : 'rgba(232,242,236,.3)') + ';'
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

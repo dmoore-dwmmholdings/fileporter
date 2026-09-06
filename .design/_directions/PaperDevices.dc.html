@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Libre+Franklin:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #1f6a45; } a:hover { color: #14512f; }
+    .pa * { box-sizing: border-box; }
+    .pa button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+    .pa input { font: inherit; color: inherit; }
+    .pa-tex { position: absolute; inset: 0; pointer-events: none; opacity: .55;
+      background-image: radial-gradient(rgba(31,43,33,.055) .8px, transparent .8px); background-size: 4px 4px; }
+    .pa-link { position: relative; padding-bottom: 3px; }
+    .pa-link::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: #1f6a45;
+      transform: scaleX(0); transform-origin: left; transition: transform 220ms cubic-bezier(.22,1,.36,1); }
+    .pa-link:hover::after, .pa-link.on::after { transform: scaleX(1); }
+    .pa-rule { transform-origin: left; animation: pa-rule 900ms cubic-bezier(.22,1,.36,1) both; }
+    @keyframes pa-rule { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .pa-rise { animation: pa-rise 700ms cubic-bezier(.22,1,.36,1) both; }
+    @keyframes pa-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    .pa-line { position: relative; transition: background 180ms; }
+    .pa-line:hover { background: #f4f4ea; }
+    .pa-line .act { opacity: 0; transition: opacity 180ms; }
+    .pa-line:hover .act { opacity: 1; }
+    .pa-btn { transition: background 160ms, color 160ms; }
+    .pa-btn:hover { background: #1f6a45; color: #fbfaf3; }
+    .pa-input { border: 0; border-bottom: 1px solid #c9cebb; background: none; outline: none;
+      transition: border-color 200ms; }
+    .pa-input:focus { border-color: #1f6a45; }
+    .pa-beacon { animation: pa-beacon 2.6s ease-in-out infinite; }
+    @keyframes pa-beacon { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+  </style>
+</helmet>
+
+<div class="pa" style="width: 1120px; height: 760px; position: relative; overflow: hidden; background: #fbfaf3; color: #1c2b21; font-family: 'Libre Franklin', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <div class="pa-tex"></div>
+
+  <header style="position: relative; display: flex; align-items: baseline; gap: 28px; padding: 26px 42px 0">
+    <span style="font-family: 'Instrument Serif', Georgia, 'Times New Roman', serif; font-size: 23px; letter-spacing: -.01em">Fileporter</span>
+    <nav style="display: flex; gap: 22px; font-size: 13px">
+      <button class="pa-link" style="color: #6d7a6d">Send</button>
+      <button class="pa-link on" style="font-weight: 500">Devices</button>
+      <button class="pa-link" style="color: #6d7a6d">Activity</button>
+    </nav>
+    <div style="flex-grow: 1"></div>
+    <span style="font-size: 10.5px; letter-spacing: .16em; color: #6d7a6d">LISTENING · 2 ONLINE</span>
+    <button class="pa-link" style="font-size: 10.5px; letter-spacing: .16em; color: #6d7a6d">SETTINGS</button>
+  </header>
+  <div class="pa-rule" style="position: relative; height: 1px; margin: 16px 42px 0; background: #1c2b21; opacity: .18"></div>
+
+  <div class="pa-rise" style="position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 52px; padding: 30px 42px 0">
+
+    <section style="display: flex; flex-direction: column; gap: 18px">
+      <div>
+        <h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 44px; font-weight: 400; letter-spacing: -.02em">Devices</h1>
+        <p style="margin: 8px 0 0; font-size: 13.5px; line-height: 1.6; color: #4b5b4d; max-width: 52ch">Fileporter finds and securely remembers your other computers on this private network. Nothing here needs an account.</p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 148px 110px 92px; gap: 0; font-size: 10px; letter-spacing: .17em; color: #8a9489; padding: 0 8px 8px">
+        <span>DEVICE</span><span>STATUS</span><span>FINGERPRINT</span><span></span>
+      </div>
+      <div style="height: 1px; background: #1c2b21; opacity: .14; margin-top: -14px"></div>
+
+      <div style="display: flex; flex-direction: column">
+        <sc-for list="{{trusted}}" as="t" hint-placeholder-count="3">
+          <div class="pa-line" style="display: grid; grid-template-columns: minmax(0, 1fr) 148px 110px 92px; align-items: center; padding: 15px 8px; border-bottom: 1px solid #e7e8dc">
+            <div style="display: flex; align-items: center; gap: 10px">
+              <span style="{{t.dot}}"></span>
+              <strong style="font-size: 14.5px; font-weight: 500">{{t.name}}</strong>
+            </div>
+            <span style="{{t.stateStyle}}">{{t.state}}</span>
+            <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #8a9489">{{t.fp}}</span>
+            <button class="pa-btn act" style="justify-self: end; padding: 5px 11px; border-radius: 3px; font-size: 11.5px; box-shadow: inset 0 0 0 1px #d3d7c8">Rename</button>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px">
+        <span style="font-size: 10px; letter-spacing: .17em; color: #8a9489">NEARBY, NOT YET TRUSTED</span>
+        <div class="pa-line" style="display: flex; align-items: center; gap: 12px; padding: 14px 8px; border-top: 1px solid #e7e8dc; border-bottom: 1px solid #e7e8dc">
+          <span class="pa-beacon" style="width: 7px; height: 7px; border-radius: 50%; background: #1f6a45"></span>
+          <strong style="font-size: 14px; font-weight: 500">Kitchen mini</strong>
+          <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: #8a9489">192.168.1.42:48721 · protocol 1</span>
+          <div style="flex-grow: 1"></div>
+          <span style="font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: 15px; color: #1f6a45">proving identity…</span>
+        </div>
+      </div>
+    </section>
+
+    <aside style="display: flex; flex-direction: column; gap: 14px; padding-left: 30px; border-left: 1px solid #e7e8dc">
+      <h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 22px; font-weight: 400">Connect by address</h2>
+      <p style="margin: 0; font-size: 12.5px; line-height: 1.65; color: #6d7a6d">For networks that block discovery. Enter the private address shown on your other computer. Trust is recorded only after identity proof.</p>
+      <label style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px">
+        <span style="font-size: 10px; letter-spacing: .17em; color: #8a9489">PRIVATE ENDPOINT</span>
+        <input class="pa-input" value="192.168.1.24:48721" style="padding: 6px 0; font-family: ui-monospace, Menlo, monospace; font-size: 13.5px" />
+      </label>
+      <button class="pa-btn" style="align-self: start; margin-top: 4px; padding: 8px 18px; border-radius: 3px; font-size: 12.5px; font-weight: 500; color: #fbfaf3; background: #1f6a45">Connect</button>
+
+      <div style="height: 1px; background: #e7e8dc; margin: 12px 0"></div>
+      <h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 22px; font-weight: 400">This computer</h2>
+      <dl style="margin: 0; display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 7px 10px; font-size: 12px">
+        <dt style="color: #8a9489">Name</dt><dd style="margin: 0">Workshop iMac</dd>
+        <dt style="color: #8a9489">Endpoint</dt><dd style="margin: 0; font-family: ui-monospace, Menlo, monospace">192.168.1.18:48721</dd>
+        <dt style="color: #8a9489">Fingerprint</dt><dd style="margin: 0; font-family: ui-monospace, Menlo, monospace">A41C · 90FE</dd>
+      </dl>
+    </aside>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":1120,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const raw = [
+      { name: 'MacBook Pro', online: true, state: 'Online, ready', fp: '7F2A · C41E' },
+      { name: 'Studio', online: true, state: 'Online, ready', fp: '19BD · 08A6' },
+      { name: 'ThinkPad', online: false, state: 'Seen yesterday', fp: 'D3C0 · 5511' }
+    ];
+    return {
+      trusted: raw.map((t) => ({
+        name: t.name,
+        state: t.state,
+        fp: t.fp,
+        dot: 'width: 7px; height: 7px; border-radius: 50%; background: ' + (t.online ? '#1f6a45' : '#c3c9ba') + ';',
+        stateStyle: 'font-size: 12.5px; color: ' + (t.online ? '#4b5b4d' : '#a2ab9f') + ';'
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

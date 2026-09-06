@@ -1,0 +1,161 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #74e6a0; } a:hover { color: #a8f5c6; }
+    .pr * { box-sizing: border-box; }
+    .pr button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+    .pr input { font: inherit; color: inherit; }
+    .pr-grid { position: absolute; inset: 0; pointer-events: none; opacity: .55;
+      background-image: linear-gradient(rgba(120,230,160,.045) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(120,230,160,.045) 1px, transparent 1px);
+      background-size: 28px 28px; }
+    .pr-nav { transition: color 90ms linear, background 90ms linear; }
+    .pr-nav:hover { color: #d6f5e2; background: rgba(120,230,160,.07); }
+    .pr-nav.on { color: #0b120e; background: var(--acc, #74e6a0); }
+    .pr-row { transition: background 100ms linear; }
+    .pr-row:hover { background: rgba(120,230,160,.06); }
+    .pr-row .act { opacity: 0; transition: opacity 100ms linear; }
+    .pr-row:hover .act { opacity: 1; }
+    .pr-cta { transition: background 100ms linear, color 100ms linear; }
+    .pr-cta:hover { background: var(--acc, #74e6a0); color: #0b120e; }
+    .pr-tick { animation: pr-tick 1.05s steps(1, end) infinite; }
+    @keyframes pr-tick { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+    .pr-in { animation: pr-in 340ms steps(6, end) both; }
+    @keyframes pr-in { from { opacity: 0; } to { opacity: 1; } }
+    .pr-sweep { animation: pr-sweep 2.8s steps(28, end) infinite; transform-origin: 50% 100%; }
+    @keyframes pr-sweep { from { transform: rotate(-52deg); } to { transform: rotate(52deg); } }
+    .pr-field { transition: box-shadow 100ms linear; }
+    .pr-field:focus-within { box-shadow: inset 0 0 0 1px var(--acc, #74e6a0); }
+  </style>
+</helmet>
+
+<div class="pr" style="width: 1120px; height: 760px; display: flex; overflow: hidden; background: #0b120e; color: #d6e5db; font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; --acc: {{accent}}">
+
+  <aside style="position: relative; display: flex; flex-direction: column; gap: 20px; width: 246px; flex-shrink: 0; padding: 20px 18px; border-right: 1px solid rgba(120,230,160,.13); background: #080d0a">
+    <div style="display: flex; align-items: center; gap: 9px">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="{{accent}}" stroke-width="1.3">
+        <rect x="1.5" y="1.5" width="15" height="15"></rect><path d="M9 13V5m0 0-3 3m3-3 3 3"></path>
+      </svg>
+      <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12.5px; font-weight: 600; letter-spacing: .12em">FILEPORTER</span>
+    </div>
+    <nav style="display: flex; flex-direction: column; gap: 1px">
+      <button class="pr-nav" style="text-align: left; padding: 8px 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em; color: #7f9689">01  SEND</button>
+      <button class="pr-nav on" style="text-align: left; padding: 8px 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em">02  DEVICES</button>
+      <button class="pr-nav" style="text-align: left; padding: 8px 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em; color: #7f9689">03  ACTIVITY</button>
+      <button class="pr-nav" style="text-align: left; padding: 8px 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em; color: #7f9689">04  SETTINGS</button>
+    </nav>
+    <div style="height: 1px; background: rgba(120,230,160,.13)"></div>
+
+    <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 0">
+      <svg width="150" height="86" viewBox="0 0 150 86" fill="none">
+        <path d="M5 82a70 70 0 0 1 140 0" stroke="rgba(120,230,160,.16)"></path>
+        <path d="M28 82a47 47 0 0 1 94 0" stroke="rgba(120,230,160,.13)"></path>
+        <path d="M51 82a24 24 0 0 1 48 0" stroke="rgba(120,230,160,.1)"></path>
+        <g class="pr-sweep"><path d="M75 82V10" stroke="{{accent}}" stroke-width="1.2"></path></g>
+        <circle cx="103" cy="49" r="3" fill="{{accent}}"></circle>
+        <circle cx="47" cy="62" r="3" fill="{{accent}}"></circle>
+        <circle cx="88" cy="70" r="2.4" fill="rgba(120,230,160,.4)"></circle>
+      </svg>
+      <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: .14em; color: #6d8377">SCANNING · 3 SEEN</span>
+    </div>
+
+    <div style="flex-grow: 1"></div>
+    <div style="display: flex; flex-direction: column; gap: 6px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; color: #6d8377">
+      <div style="display: flex; justify-content: space-between"><span>LISTEN</span><span style="color: {{accent}}">192.168.1.18:48721</span></div>
+      <div style="display: flex; justify-content: space-between"><span>MDNS</span><span style="color: {{accent}}">ADVERTISING</span></div>
+      <div style="display: flex; justify-content: space-between"><span>PROTO</span><span>v1</span></div>
+    </div>
+  </aside>
+
+  <main style="position: relative; flex-grow: 1; display: flex; flex-direction: column; padding: 24px 28px">
+    <div class="pr-grid"></div>
+
+    <div class="pr-in" style="position: relative; display: flex; align-items: baseline; gap: 12px">
+      <h1 style="margin: 0; font-size: 19px; font-weight: 500">Devices</h1>
+      <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #6d8377">/ 3 trusted · 1 pairing</span>
+      <div style="flex-grow: 1"></div>
+      <span class="pr-tick" style="width: 7px; height: 7px; background: {{accent}}"></span>
+      <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #7f9689">DISCOVERY LIVE</span>
+    </div>
+
+    <div class="pr-in" style="position: relative; margin-top: 20px">
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 190px 140px 118px 92px; gap: 12px; padding: 0 10px 8px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 9.5px; letter-spacing: .17em; color: #6d8377">
+        <span>DEVICE</span><span>ENDPOINT</span><span>FINGERPRINT</span><span>STATE</span><span></span>
+      </div>
+      <div style="height: 1px; background: rgba(120,230,160,.16)"></div>
+      <sc-for list="{{trusted}}" as="t" hint-placeholder-count="3">
+        <div class="pr-row" style="display: grid; grid-template-columns: minmax(0, 1fr) 190px 140px 118px 92px; gap: 12px; align-items: center; padding: 13px 10px; border-bottom: 1px solid rgba(120,230,160,.08)">
+          <div style="display: flex; align-items: center; gap: 10px">
+            <span style="{{t.box}}"></span>
+            <span style="font-size: 13.5px; color: #eaf6ef">{{t.name}}</span>
+          </div>
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; color: #7f9689">{{t.endpoint}}</span>
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; color: #7f9689">{{t.fp}}</span>
+          <span style="{{t.stateStyle}}">{{t.state}}</span>
+          <span class="pr-cta act" style="justify-self: end; padding: 4px 10px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; letter-spacing: .06em; color: #a9c4b6; box-shadow: inset 0 0 0 1px rgba(120,230,160,.22)">RENAME</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div class="pr-in" style="position: relative; margin-top: 26px">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 9.5px; letter-spacing: .17em; color: #6d8377">NEARBY · UNTRUSTED</span>
+        <div style="flex-grow: 1; height: 1px; background: rgba(120,230,160,.13)"></div>
+      </div>
+      <div class="pr-row" style="display: flex; align-items: center; gap: 14px; padding: 13px 10px; box-shadow: inset 0 0 0 1px rgba(120,230,160,.16)">
+        <span class="pr-tick" style="width: 9px; height: 9px; background: {{accent}}"></span>
+        <span style="font-size: 13.5px; color: #eaf6ef">Kitchen mini</span>
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; color: #7f9689">192.168.1.42:48721 · proto 1</span>
+        <div style="flex-grow: 1"></div>
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; color: {{accent}}">PROVING IDENTITY…</span>
+      </div>
+    </div>
+
+    <div class="pr-in" style="position: relative; margin-top: 26px; display: flex; flex-direction: column; gap: 10px">
+      <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 9.5px; letter-spacing: .17em; color: #6d8377">CONNECT BY ADDRESS · DISCOVERY FALLBACK</span>
+      <div class="pr-field" style="display: flex; align-items: center; gap: 10px; padding: 4px 4px 4px 12px; background: #080d0a; box-shadow: inset 0 0 0 1px rgba(120,230,160,.18)">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: {{accent}}">&gt;</span>
+        <input value="192.168.1.24:48721" style="flex-grow: 1; border: 0; background: none; outline: none; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: #eaf6ef" />
+        <button class="pr-cta" style="padding: 8px 18px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; letter-spacing: .08em; color: #0b120e; background: {{accent}}">CONNECT</button>
+      </div>
+      <span style="font-size: 11.5px; color: #6d8377">Trust is recorded only after both sides prove possession of their Ed25519 identity.</span>
+    </div>
+  </main>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#74e6a0","options":["#74e6a0","#5ddc8f","#9cf5bd","#3fcf7c"]},"$preview":{"width":1120,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const acc = this.props.accent ?? '#74e6a0';
+    const mono = "font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;";
+    const raw = [
+      { name: 'MacBook Pro', online: true, endpoint: '192.168.1.31:48721', fp: '7F2A · C41E', state: 'ONLINE' },
+      { name: 'Studio', online: true, endpoint: '192.168.1.19:48721', fp: '19BD · 08A6', state: 'ONLINE' },
+      { name: 'ThinkPad', online: false, endpoint: 'last 192.168.1.55', fp: 'D3C0 · 5511', state: 'OFFLINE 19h' }
+    ];
+    return {
+      accent: acc,
+      trusted: raw.map((t) => ({
+        name: t.name,
+        endpoint: t.endpoint,
+        fp: t.fp,
+        state: t.state,
+        box: 'width: 9px; height: 9px; flex-shrink: 0; ' + (t.online ? 'background: ' + acc + ';' : 'box-shadow: inset 0 0 0 1px #41544a;'),
+        stateStyle: mono + ' font-size: 11px; letter-spacing: .08em; color: ' + (t.online ? acc : '#5c7266') + ';'
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

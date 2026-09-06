@@ -1,0 +1,96 @@
+{
+ "artboards": [
+  {
+   "file": "Main.dc.html",
+   "title": "01 \u00b7 Transport",
+   "x": 0,
+   "y": 0,
+   "w": 1120,
+   "h": 760,
+   "is_interactive": true
+  },
+  {
+   "file": "Devices.dc.html",
+   "title": "02 \u00b7 Pads",
+   "x": 1280,
+   "y": 0,
+   "w": 1120,
+   "h": 760
+  },
+  {
+   "file": "Activity.dc.html",
+   "title": "03 \u00b7 Log",
+   "x": 2560,
+   "y": 0,
+   "w": 1120,
+   "h": 760
+  },
+  {
+   "file": "Settings.dc.html",
+   "title": "04 \u00b7 Config",
+   "x": 0,
+   "y": 920,
+   "w": 1120,
+   "h": 760,
+   "is_interactive": true
+  },
+  {
+   "file": "Onboarding.dc.html",
+   "title": "First run",
+   "x": 1280,
+   "y": 920,
+   "w": 1120,
+   "h": 760,
+   "is_interactive": true
+  },
+  {
+   "file": "Chamber.dc.html",
+   "title": "Alt \u00b7 Dense chamber",
+   "x": 2560,
+   "y": 920,
+   "w": 1120,
+   "h": 760,
+   "is_interactive": true
+  }
+ ],
+ "annotations": [
+  {
+   "id": "brief",
+   "x": 0,
+   "y": -440,
+   "w": 800,
+   "text": "FILEPORTER \u00b7 QUIET DIRECTION\n\nThe transport chamber stripped to the pad, the beam and what you are sending. No rail, no telemetry header, no flank panels \u2014 one headline, the destination pads as chips, the payload resting on the deck, and what arrived along the bottom.\n\nAll five screens are now at this density and share one language: a 44px light headline, sans labels over mono values, underlined fields instead of boxes, the same floor glow, and the same nav. Mono is reserved for what a machine produced \u2014 addresses, fingerprints, sizes, file names.\n\nClick the pad on 01 to run a transport, or drag onto it to arm the field."
+  },
+  {
+   "id": "system",
+   "x": 1280,
+   "y": -440,
+   "w": 640,
+   "text": "WHAT CHANGED IN THE TRANSLATION\n\nLog drops the table chrome and the machine shorthand \u2014 Sent and Received instead of arrow glyphs, Verified instead of MATCH. The detail drawer survives: click any received row for Reveal / Copy / Move per item.\n\nConfig drops the linked-pads table entirely. It duplicated Pads, and revoke belongs where you look at pads.\n\nPads presents each device as an object on the floor rather than a card in a grid. A dark pad dims and stops moving."
+  },
+  {
+   "id": "live",
+   "x": 2560,
+   "y": -440,
+   "w": 600,
+   "text": "LIVE ON THESE BOARDS\n\n01 destination chips, click-to-transport, drag-over arming.\n02 hover a held pattern for discard.\n03 click any received row to open what materialized.\n04 every switch and the retention selector; Apply lights when something changes.\nFirst run: Bring this pad online.\n\nAccent hue is a tweak chip on each board."
+  },
+  {
+   "id": "caveat",
+   "x": 1280,
+   "y": 1730,
+   "w": 640,
+   "text": "Sample device names, addresses, fingerprints and transfer figures throughout. Fonts load from Google Fonts, so PNG and PDF export fall back to the local stack."
+  },
+  {
+   "id": "quiet",
+   "x": 2560,
+   "y": 1730,
+   "w": 600,
+   "text": "ALT \u00b7 THE DENSE CHAMBER\n\nTwenty passes of instrumentation: perspective room, emitter pylons, ceiling recess, wall-mounted readouts, back-wall receiving alcoves, four-phase transport. Kept for reference and for any piece worth pulling forward into 01."
+  }
+ ],
+ "launch": {
+  "view": "canvas"
+ }
+}

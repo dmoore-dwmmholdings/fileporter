@@ -1,0 +1,592 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #74e6a0; } a:hover { color: #a8f5c6; }
+    .tp * { box-sizing: border-box; }
+    .tp button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+    .tp input { font: inherit; color: inherit; }
+    .mono { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+
+    .tp-grid { position: absolute; inset: 0; pointer-events: none; opacity: .5;
+      background-image: linear-gradient(rgba(120,230,160,.045) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(120,230,160,.045) 1px, transparent 1px);
+      background-size: 26px 26px; }
+    .tp-nav { transition: color 90ms linear, background 90ms linear; }
+    .tp-nav:hover { color: #d6f5e2; background: rgba(120,230,160,.07); }
+    .tp-nav.on { color: #0b120e; background: var(--acc, #74e6a0); }
+    .tp-chip { transition: background 100ms linear, color 100ms linear, box-shadow 100ms linear; }
+    .tp-chip:hover { box-shadow: inset 0 0 0 1px var(--acc, #74e6a0); }
+    .tp-cta { transition: background 100ms linear, color 100ms linear; }
+    .tp-cta:hover { background: var(--acc, #74e6a0); color: #0b120e; }
+    .tp-row { transition: background 100ms linear; }
+    .tp-row:hover { background: rgba(120,230,160,.06); }
+    .blink { animation: blink 1.05s steps(1, end) infinite; }
+    @keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+    .fade { animation: fade 300ms steps(5, end) both; }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+    /* ═══════════════════════════════════════════════════ chamber shell */
+    .ch { position: relative; display: block; width: 100%; overflow: hidden; padding: 0;
+      background: #070d0a;
+      box-shadow: inset 0 0 0 1px rgba(120,230,160,.20), inset 0 0 90px rgba(0,0,0,.7);
+      transition: box-shadow 120ms linear; }
+    .ch:hover { box-shadow: inset 0 0 0 1px rgba(120,230,160,.4), inset 0 0 90px rgba(0,0,0,.7); }
+    .ch-vig { position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(115% 78% at 50% 108%, rgba(120,230,160,.16) 0%, transparent 58%),
+                  radial-gradient(90% 60% at 50% -8%, rgba(120,230,160,.07) 0%, transparent 62%); }
+    .ch-noise { position: absolute; inset: 0; pointer-events: none; opacity: .45;
+      background-image: radial-gradient(rgba(120,230,160,.10) .6px, transparent .6px); background-size: 3px 3px; }
+
+    /* ribbed side walls */
+    .wall { position: absolute; top: 0; bottom: 0; width: 42px; pointer-events: none;
+      background:
+        repeating-linear-gradient(180deg, rgba(120,230,160,.10) 0 1px, transparent 1px 34px),
+        linear-gradient(90deg, rgba(120,230,160,.07), transparent); }
+    .wall.r { transform: scaleX(-1); }
+    .wall::after { content: ''; position: absolute; top: 0; bottom: 0; right: 0; width: 1px;
+      background: rgba(120,230,160,.18); }
+    .frame-no { position: absolute; font-size: 9px; letter-spacing: .1em; color: #8aa398; }
+
+    .br { position: absolute; width: 20px; height: 20px; transition: all 150ms steps(3, end); }
+    .ch:hover .br { width: 34px; height: 34px; }
+
+    /* emitter pylons */
+    .pyl { opacity: .72; transition: opacity 200ms linear; }
+    .pylcore { opacity: .6; animation: pylbreathe 3.9s ease-in-out infinite; }
+    .pyltip { animation: blink 1.9s steps(1, end) infinite; }
+    .pyltip.back { animation-delay: .95s; }
+    .pylcore.back { animation-delay: .9s; }
+    @keyframes pylbreathe { 0%, 100% { opacity: .26; } 50% { opacity: .56; } }
+    .ch:hover .pylcore { animation-duration: 1.5s; }
+    .drag .pylcore { animation-duration: 1s; }
+    .ph-beam .pylcore { animation-duration: .4s; }
+    .ph-engage .pylcore { animation-duration: .6s; }
+
+    /* ═══════════════════════════════════════════ back-wall alcoves */
+    .alc { position: absolute; top: 25.36%; width: 7.914%; margin-left: -3.957%; padding: 6px 5px 5px;
+      display: flex; flex-direction: column; gap: 4px; align-items: stretch;
+      background: rgba(4,8,6,.82); box-shadow: inset 0 0 0 1px rgba(120,230,160,.14), inset 0 6px 14px rgba(0,0,0,.7);
+      transition: box-shadow 150ms linear, background 150ms linear; }
+    .alc .aname { font-size: 9.5px; letter-spacing: .14em; color: #8aa398; text-align: center; transition: color 150ms; }
+    .alc .astat { font-size: 8.5px; letter-spacing: .14em; color: #8aa398; text-align: center; }
+    .alc .ap { opacity: .22; transition: opacity 150ms linear; }
+    .alc .pbar { display: block; height: 3px; background: rgba(120,230,160,.12); }
+    .alc .pbar i { display: block; height: 100%; width: 0; background: var(--acc, #74e6a0); }
+    .alc .pring { position: absolute; inset: -1px; box-shadow: 0 0 0 1px var(--acc, #74e6a0); opacity: 0; }
+    .sel-mbp .alc-mbp, .sel-studio .alc-studio, .sel-tp .alc-tp {
+      background: rgba(120,230,160,.07); box-shadow: inset 0 0 0 1px rgba(120,230,160,.5), inset 0 6px 14px rgba(0,0,0,.6); }
+    .sel-mbp .alc-mbp .aname, .sel-studio .alc-studio .aname, .sel-tp .alc-tp .aname { color: #eaf6ef; }
+    .sel-mbp .alc-mbp .astat, .sel-studio .alc-studio .astat, .sel-tp .alc-tp .astat { color: var(--acc, #74e6a0); }
+    .sel-mbp .alc-mbp .ap, .sel-studio .alc-studio .ap, .sel-tp .alc-tp .ap { opacity: .95; }
+
+    /* ═══════════════════════════════════════════════════ coils + beam */
+    .beam { position: absolute; left: 0; right: 0; top: 20%; bottom: 21.43%; pointer-events: none; transition: opacity 180ms linear; }
+    .beam-o { clip-path: polygon(39% 0, 61% 0, 65% 100%, 35% 100%); opacity: .8; filter: blur(16px);
+      background: linear-gradient(180deg, rgba(120,230,160,0), rgba(120,230,160,.5) 62%, rgba(190,255,215,.8)); }
+    .beam-m { z-index: 1; clip-path: polygon(44% 0, 56% 0, 59% 100%, 41% 100%); opacity: .8; overflow: hidden;
+      background: linear-gradient(180deg, rgba(120,230,160,0), rgba(120,230,160,.4) 60%, rgba(190,255,215,.62)); }
+    .beam-c { z-index: 2; clip-path: polygon(49.5% 0, 50.5% 0, 50.4% 100%, 49.6% 100%); opacity: .85;
+      background: linear-gradient(180deg, rgba(120,230,160,0), rgba(190,255,215,1)); }
+        .ch:hover .beam-o { opacity: .62; } .ch:hover .beam-m { opacity: .72; } .ch:hover .beam-c { opacity: .95; }
+    .beam-m::after { content: ''; position: absolute; inset: -30px 0;
+      background: repeating-linear-gradient(180deg, rgba(190,255,215,.085) 0 1.5px, transparent 1.5px 26px);
+      -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 55%, #000 100%);
+      mask-image: linear-gradient(180deg, transparent 0%, #000 55%, #000 100%);
+      animation: beamflow 3.1s linear infinite; }
+    @keyframes beamflow { to { transform: translateY(27.5px); } }
+    .ch:hover .beam-m::after { animation-duration: 1.3s; }
+    .ph-beam .beam-m::after { animation-duration: .34s; }
+    .beam-o { animation: beambreathe 4.6s ease-in-out infinite; }
+    @keyframes beambreathe { 0%, 100% { opacity: .34; } 50% { opacity: .52; } }
+    .beam-c { animation: corepulse 2.8s ease-in-out infinite; }
+    @keyframes corepulse { 0%, 100% { opacity: .45; } 50% { opacity: .8; } }
+
+        .landing { z-index: 2; position: absolute; left: 50%; top: 71.07%; width: 35.97%; height: 15%; transform: translateX(-50%);
+      pointer-events: none; border-radius: 50%; filter: blur(16px);
+      background: radial-gradient(closest-side, rgba(190,255,215,.5), rgba(120,230,160,.16) 55%, transparent);
+      animation: landbreathe 3.9s ease-in-out infinite; }
+    @keyframes landbreathe { 0%, 100% { opacity: .5; } 50% { opacity: .85; } }
+    .ch:hover .landing { animation-duration: 1.5s; }
+    .drag .landing { animation-duration: 1s; }
+    .ph-beam .landing { opacity: 1; animation: flick .16s steps(2, end) infinite; }
+
+    .mote { position: absolute; bottom: 21.43%; width: 2px; height: 9px; background: var(--acc, #74e6a0); opacity: 0;
+      animation: riseIdle 4.2s steps(16, end) infinite; }
+    @keyframes riseIdle { 0% { transform: translateY(0); opacity: 0; } 22% { opacity: .4; } 100% { transform: translateY(-260px); opacity: 0; } }
+
+    /* ═══════════════════════════════════════════════════ pad */
+    .pad-seg { opacity: .16; }
+    .pad-segs .s0 { animation: segfire 2.2s steps(1, end) infinite; }
+    .pad-segs .s1 { animation: segfire 2.2s steps(1, end) infinite .28s; }
+    .pad-segs .s2 { animation: segfire 2.2s steps(1, end) infinite .56s; }
+    .pad-segs .s3 { animation: segfire 2.2s steps(1, end) infinite .84s; }
+    .pad-segs .s4 { animation: segfire 2.2s steps(1, end) infinite 1.12s; }
+    .pad-segs .s5 { animation: segfire 2.2s steps(1, end) infinite 1.4s; }
+    .pad-segs .s6 { animation: segfire 2.2s steps(1, end) infinite 1.68s; }
+    .pad-segs .s7 { animation: segfire 2.2s steps(1, end) infinite 1.96s; }
+    @keyframes segfire { 0% { opacity: .85; } 22%, 100% { opacity: .14; } }
+    .pad-node { animation: blink 1.6s steps(1, end) infinite; }
+    .pad-node.n1 { animation-delay: .2s; } .pad-node.n2 { animation-delay: .4s; }
+    .pad-node.n3 { animation-delay: .6s; } .pad-node.n4 { animation-delay: .8s; }
+    .pad-node.n5 { animation-delay: 1s; }  .pad-node.n6 { animation-delay: 1.2s; }
+    .pad-node.n7 { animation-delay: 1.4s; }
+    .pool { animation: poolbreathe 3.9s ease-in-out infinite; }
+    @keyframes poolbreathe { 0%, 100% { opacity: .62; } 50% { opacity: .92; } }
+    .ch:hover .pool { animation-duration: 1.5s; }
+    .ph-beam .pool { opacity: 1; animation: flick .16s steps(2, end) infinite; }
+    .strip { animation: stripe 3.4s ease-in-out infinite; }
+    @keyframes stripe { 0%, 100% { opacity: .1; } 50% { opacity: .3; } }
+    .pad-core { animation: padbreathe 3.9s ease-in-out infinite; }
+    @keyframes padbreathe { 0%, 100% { opacity: .58; } 50% { opacity: .88; } }
+    .ch:hover .pad-core { animation-duration: 1.5s; }
+    .ph-beam .pad-core { animation-duration: .5s; }
+
+    /* flank instrument panels */
+    .ipanel { position: absolute; display: flex; flex-direction: column; gap: 5px; width: 148px;
+      padding: 9px 10px; background: rgba(6,11,9,.8); box-shadow: inset 0 0 0 1px rgba(120,230,160,.16); }
+    .il { transform: perspective(760px) rotateY(21deg); transform-origin: left center; }
+    .ir { transform: perspective(760px) rotateY(-21deg); transform-origin: right center; }
+    .ihead { font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 500; font-size: 8.5px; letter-spacing: .18em; color: #8aa398; padding-bottom: 4px;
+      border-bottom: 1px solid rgba(120,230,160,.14); }
+    .irow { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .ik { font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 500; font-size: 9px; letter-spacing: .11em; color: #8aa398; }
+    .iv { font-size: 10px; color: #d6e5db; }
+    .ibar { display: block; height: 3px; margin-top: 3px; background: rgba(120,230,160,.12); }
+    .ibar i { display: block; height: 100%; background: var(--acc, #74e6a0); }
+    .ifoot { font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 500; font-size: 8.5px; letter-spacing: .14em; color: #8aa398; }
+
+    /* ceiling emitter cells */
+    .cell { opacity: .13; }
+    .coil { opacity: .3; }
+    .tip { opacity: .25; }
+    .cells .k0, .coils .c0, .coils .t0 { animation: coilfire 2.1s steps(1, end) infinite; }
+    .cells .k1, .coils .c1, .coils .t1 { animation: coilfire 2.1s steps(1, end) infinite .3s; }
+    .cells .k2, .coils .c2, .coils .t2 { animation: coilfire 2.1s steps(1, end) infinite .6s; }
+    .cells .k3, .coils .c3, .coils .t3 { animation: coilfire 2.1s steps(1, end) infinite .9s; }
+    .cells .k4, .coils .c4, .coils .t4 { animation: coilfire 2.1s steps(1, end) infinite 1.2s; }
+    .cells .k5, .coils .c5, .coils .t5 { animation: coilfire 2.1s steps(1, end) infinite 1.5s; }
+    .cells .k6, .coils .c6, .coils .t6 { animation: coilfire 2.1s steps(1, end) infinite 1.8s; }
+    @keyframes coilfire { 0% { opacity: .32; } 40%, 100% { opacity: .12; } }
+
+    /* ═══════════════════════════════════════════════════ payload */
+    .load { z-index: 2; position: absolute; left: 50%; top: 52.86%; width: 38.37%; transform: translateX(-50%)
+      display: flex; flex-direction: column; gap: 7px; pointer-events: none;
+      transform: translateX(-50%) perspective(820px) rotateX(19deg); transform-origin: center bottom; }
+    .pkt { position: relative; overflow: hidden; display: flex; align-items: center; gap: 9px;
+      padding: 8px 12px; background: linear-gradient(180deg, #1a2a22, #0b1611);
+      box-shadow: inset 0 1px 0 rgba(190,255,215,.34), inset 0 0 0 1px rgba(120,230,160,.4),
+                  0 8px 22px rgba(0,0,0,.6), 0 0 22px rgba(120,230,160,.10);
+      font-size: 11.5px; color: #e2efe7; transition: transform 160ms steps(3, end); }
+    .ch:hover .pkt { transform: translateY(-5px); }
+    .pkt::after { content: ''; position: absolute; left: 8%; right: 8%; bottom: -9px; height: 9px;
+      background: radial-gradient(closest-side, rgba(0,0,0,.55), transparent); pointer-events: none; }
+    .pkt em { position: absolute; inset: 0; opacity: 0;
+      background: repeating-linear-gradient(0deg, rgba(120,230,160,.6) 0 1px, transparent 1px 4px); }
+    .pkt b { position: absolute; left: 0; right: 0; height: 2px; top: -3px; background: var(--acc, #74e6a0);
+      box-shadow: 0 0 10px var(--acc, #74e6a0); opacity: 0; }
+
+    /* ═══════════════════════════════════════════════════ readout */
+    .ro { z-index: 3; position: absolute; left: 50%; top: 42.14%; transform: translateX(-50%); display: flex;
+      flex-direction: column; align-items: center; gap: 9px; pointer-events: none; }
+        .ro::before, .ro::after { content: ''; position: absolute; top: 15px; width: 96px; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(190,255,215,.55)); }
+    .ro::before { left: -116px; }
+    .ro::after { right: -116px; transform: scaleX(-1); }
+    .ro h2 { margin: 0; font-size: 17px; font-weight: 500; letter-spacing: .26em; color: #f2fff7;
+      text-shadow: 0 0 22px rgba(190,255,215,.55), 0 0 46px rgba(120,230,160,.35), 0 2px 12px rgba(0,0,0,.95); }
+    .seg-bar { display: flex; gap: 2px; padding: 3px; background: rgba(4,9,7,.55); box-shadow: inset 0 0 0 1px rgba(120,230,160,.28); transition: opacity 160ms linear; }
+    .seg-bar span { width: 12px; height: 6px; background: rgba(120,230,160,.1); }
+    .ph-idle .seg-bar { opacity: 0; }
+
+    /* ═══════════════════════════════════════════ drag-over: armed */
+    .drag .ch { box-shadow: inset 0 0 0 2px var(--acc, #74e6a0), inset 0 0 90px rgba(0,0,0,.7); }
+    .drag .br { width: 46px; height: 46px; }
+    .drag .beam-o { opacity: .72; } .drag .beam-m { opacity: .8; } .drag .beam-c { opacity: 1; }
+    .drag .beam-m::after { animation-duration: .7s; }
+    .drag .pad-core, .drag .pool { animation-duration: 1s; }
+    .drag .pad-segs .pad-seg { animation-duration: .55s; }
+    .drag .cells .cell { animation-duration: .9s; }
+    .drag .mote { animation-duration: 1.5s; }
+    .drag .seg-bar { opacity: .5; }
+    .drag .ro h2 { text-shadow: 0 0 26px rgba(190,255,215,.85), 0 0 60px rgba(120,230,160,.5), 0 2px 12px rgba(0,0,0,.95); }
+    .drag .load .pkt { transform: translateY(-9px); }
+    .drag .sweep { animation-duration: 2.4s; }
+
+    /* ═══════════════════════════════════════════ phase: ENGAGE (scan) */
+    .ph-engage .pkt em { animation: scanline 1.2s steps(14, end) forwards; }
+    @keyframes scanline { 0% { opacity: 0; background-position-y: 0; } 20% { opacity: 1; } 100% { opacity: .85; background-position-y: 40px; } }
+    .ph-engage .pkt b { animation: scanbar 1.2s steps(16, end) forwards; }
+    @keyframes scanbar { 0% { opacity: 1; top: -3px; } 100% { opacity: 1; top: 100%; } }
+    .ph-engage .br { width: 44px; height: 44px; }
+    .ph-engage .pad-segs .pad-seg { animation-duration: .6s; }
+
+    /* ═══════════════════════════════════════════ phase: BEAM (transit) */
+    .ph-beam .pkt { animation: demat 700ms steps(10, end) forwards; }
+    .ph-beam .pkt:nth-child(2) { animation-delay: 110ms; }
+    .ph-beam .pkt:nth-child(3) { animation-delay: 220ms; }
+    @keyframes demat {
+      0%   { transform: translateY(0) scaleX(1); opacity: 1; }
+      25%  { transform: translateY(-7px) scaleX(1.03); opacity: 1; }
+      100% { transform: translateY(-150px) scaleX(.45); opacity: 0; }
+    }
+    .ph-beam .pkt em { opacity: 1; }
+    .ph-beam .beam-o { opacity: .55; } .ph-beam .beam-m { opacity: .7; } .ph-beam .beam-c { opacity: 1; }
+    .ph-beam .beam { animation: flick .16s steps(2, end) infinite; }
+    @keyframes flick { 0% { filter: brightness(1); } 100% { filter: brightness(1.45); } }
+    .ph-beam .mote { animation: rise 1s steps(9, end) infinite; }
+    .ch:hover .mote { animation-duration: 2.1s; }
+    @keyframes rise { 0% { transform: translateY(0); opacity: 0; } 18% { opacity: .95; } 100% { transform: translateY(-330px); opacity: 0; } }
+    .ph-beam .coil { animation-duration: .45s !important; }
+    .ph-beam .pad-segs .pad-seg { animation-duration: .4s; }
+    
+    .ph-beam .pad-core { opacity: 1; }
+    .ph-beam .ibar i { animation: pfill 2s steps(20, end) forwards; }
+    .ph-beam .flow { opacity: 0; }
+    .ph-beam.sel-mbp .alc-mbp .pbar i, .ph-beam.sel-studio .alc-studio .pbar i, .ph-beam.sel-tp .alc-tp .pbar i { animation: pfill 2s steps(20, end) forwards; }
+    @keyframes pfill { from { width: 0; } to { width: 88%; } }
+    .ph-beam .seg-bar span { animation: segload 2s steps(1, end) forwards; }
+    @keyframes segload { to { background: var(--acc, #74e6a0); } }
+
+    /* ═══════════════════════════════════════════ phase: DONE (rebuild) */
+    .ph-done .pkt { opacity: 0; }
+    .ph-done .alc .pbar i { width: 100%; }
+    .ph-done .alc .pring { animation: pring 800ms cubic-bezier(.22,1,.36,1) forwards; }
+    @keyframes pring { 0% { transform: scale(.9); opacity: 1; } 100% { transform: scale(1.12); opacity: 0; } }
+    .ph-done .seg-bar span { background: var(--acc, #74e6a0); }
+    .ph-done .pad-core { opacity: 1; }
+
+    .shock { position: absolute; left: 50%; top: 69.29%; width: 69.54%; height: 21.79%; margin-left: -34.77%;
+      border-radius: 50%; box-shadow: 0 0 0 1px var(--acc, #74e6a0); opacity: 0; pointer-events: none; }
+    .ph-done .shock { animation: shock 900ms cubic-bezier(.22,1,.36,1) forwards; }
+    @keyframes shock { 0% { transform: scale(.45); opacity: .9; } 100% { transform: scale(1.1); opacity: 0; } }
+
+    /* callouts */
+    .sweep { position: absolute; left: 0; right: 0; height: 76px; pointer-events: none;
+      background: linear-gradient(180deg, transparent, rgba(120,230,160,.07), transparent);
+      animation: sweepdown 7.5s linear infinite; }
+    @keyframes sweepdown { 0% { top: -80px; } 100% { top: 100%; } }
+    .ph-beam .sweep { animation-duration: 1.6s; }
+    .callout { position: absolute; font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 500; font-size: 9.5px; letter-spacing: .13em; color: #8aa398; pointer-events: none; }
+  </style>
+</helmet>
+
+<div class="tp ph-{{phase}} {{dragClass}} {{selClass}}" style="width: 1120px; height: 760px; display: flex; overflow: hidden; background: #0b120e; color: #d6e5db; font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; --acc: {{accent}}">
+
+  <!-- ═════════════════════════════════════════════════════════════ rail -->
+  <aside style="position: relative; display: flex; flex-direction: column; gap: 16px; width: 246px; flex-shrink: 0; padding: 18px 16px; border-right: 1px solid rgba(120,230,160,.14); background: #080d0a">
+    <div style="display: flex; align-items: center; gap: 9px">
+      <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="{{accent}}" stroke-width="1.2">
+        <ellipse cx="10" cy="15" rx="8" ry="3"></ellipse><ellipse cx="10" cy="15" rx="4" ry="1.5"></ellipse>
+        <path d="M10 12V2m0 0L6.5 5.5M10 2l3.5 3.5"></path>
+      </svg>
+      <span class="mono" style="font-size: 12.5px; font-weight: 600; letter-spacing: .12em">FILEPORTER</span>
+    </div>
+    <div class="mono" style="font-size: 9.5px; letter-spacing: .14em; color: #8aa398; margin-top: -8px">PAD 01 · WORKSHOP IMAC</div>
+
+    <nav style="display: flex; flex-direction: column; gap: 1px">
+      <button class="tp-nav on mono" type="button" style="text-align: left; padding: 8px 11px; font-size: 12px; letter-spacing: .06em">01  TRANSPORT</button>
+      <button class="tp-nav mono" type="button" style="text-align: left; padding: 8px 11px; font-size: 12px; letter-spacing: .06em; color: #8aa398">02  PADS</button>
+      <button class="tp-nav mono" type="button" style="text-align: left; padding: 8px 11px; font-size: 12px; letter-spacing: .06em; color: #8aa398">03  LOG</button>
+      <button class="tp-nav mono" type="button" style="text-align: left; padding: 8px 11px; font-size: 12px; letter-spacing: .06em; color: #8aa398">04  CONFIG</button>
+    </nav>
+
+    <div style="height: 1px; background: rgba(120,230,160,.14)"></div>
+
+    <div style="display: flex; flex-direction: column; gap: 7px">
+      <span  style="font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 500; font-size: 9.5px; letter-spacing: .16em; color: #8aa398">DESTINATION PADS</span>
+      <sc-for list="{{devices}}" as="d" hint-placeholder-count="3">
+        <button class="tp-chip" type="button" style="{{d.chipStyle}}" onClick="{{d.pick}}">
+          <span style="{{d.boxStyle}}"></span>
+          <span style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1; text-align: left">
+            <span style="font-size: 11.5px; letter-spacing: .03em">{{d.name}}</span>
+            <span class="mono" style="font-size: 8.5px; letter-spacing: .12em; color: #8aa398">{{d.sub}}</span>
+          </span>
+          <span style="{{d.metaStyle}}">{{d.meta}}</span>
+        </button>
+      </sc-for>
+      <span style="font-size: 10.5px; line-height: 1.5; color: #8aa398">{{railNote}}</span>
+    </div>
+
+    <div style="height: 1px; background: rgba(120,230,160,.14)"></div>
+
+    <div style="display: flex; flex-direction: column; gap: 7px">
+      <span  style="font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 500; font-size: 9.5px; letter-spacing: .16em; color: #8aa398">MATERIALIZED HERE</span>
+      <sc-for list="{{arrivals}}" as="a" hint-placeholder-count="2">
+        <div class="tp-row" style="display: flex; flex-direction: column; gap: 5px; padding: 8px; box-shadow: inset 0 0 0 1px rgba(120,230,160,.12)">
+          <div style="display: flex; align-items: baseline; gap: 8px">
+            <span class="mono" style="font-size: 11px; color: #eaf6ef; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{a.name}}</span>
+            <span class="mono" style="font-size: 9.5px; color: #8aa398">{{a.size}}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px">
+            <span class="mono" style="font-size: 8.5px; letter-spacing: .1em; color: {{accent}}">{{a.hash}}</span>
+            <div style="flex-grow: 1"></div>
+            <button class="tp-cta mono" type="button" style="padding: 3px 8px; font-size: 9px; letter-spacing: .06em; color: #b3c9bd; box-shadow: inset 0 0 0 1px rgba(120,230,160,.22)">COPY</button>
+            <button class="tp-cta mono" type="button" style="padding: 3px 8px; font-size: 9px; letter-spacing: .06em; color: #b3c9bd; box-shadow: inset 0 0 0 1px rgba(120,230,160,.22)">CUT</button>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="flex-grow: 1"></div>
+    <div class="mono" style="display: flex; flex-direction: column; gap: 5px; font-size: 9.5px; color: #8aa398">
+      <div style="display: flex; justify-content: space-between; gap: 8px"><span style="font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 500; font-size: 9px; letter-spacing: .12em">CARRIER</span><span style="color: {{accent}}">192.168.1.18:48721</span></div>
+      <div style="display: flex; justify-content: space-between; gap: 8px"><span style="font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 500; font-size: 9px; letter-spacing: .12em">BEACON</span><span style="color: {{accent}}">ADVERTISING</span></div>
+      <div style="display: flex; justify-content: space-between; gap: 8px"><span style="font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 500; font-size: 9px; letter-spacing: .12em">IDENTITY</span><span style="color: #b3c9bd">A41C · 90FE</span></div>
+    </div>
+  </aside>
+
+  <!-- ═════════════════════════════════════════════════════════════ main -->
+  <main style="position: relative; flex-grow: 1; display: flex; flex-direction: column; padding: 16px 20px">
+    <div class="tp-grid"></div>
+
+    <!-- instrument header -->
+    <div class="fade" style="position: relative; display: flex; align-items: stretch; gap: 0; margin-bottom: 12px; box-shadow: inset 0 0 0 1px rgba(120,230,160,.14)">
+      <div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 14px; border-right: 1px solid rgba(120,230,160,.14)">
+        <span style="font-size: 15px; font-weight: 500; letter-spacing: -.01em; color: #eaf6ef">Transport</span>
+        <span class="mono" style="font-size: 9px; letter-spacing: .14em; color: #8aa398">CHAMBER 01</span>
+      </div>
+      <sc-for list="{{headCells}}" as="h" hint-placeholder-count="4">
+        <div style="display: flex; flex-direction: column; gap: 3px; padding: 8px 16px; border-right: 1px solid rgba(120,230,160,.14); min-width: 108px">
+          <span  style="font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 500; font-size: 8.5px; letter-spacing: .16em; color: #8aa398">{{h.k}}</span>
+          <span style="{{h.style}}">{{h.v}}</span>
+        </div>
+      </sc-for>
+      <div style="flex-grow: 1"></div>
+      <div style="display: flex; align-items: center; gap: 9px; padding: 8px 14px; border-left: 1px solid rgba(120,230,160,.14)">
+        <span class="blink" style="width: 7px; height: 7px; background: {{accent}}"></span>
+        <span class="mono" style="font-size: 11px; letter-spacing: .1em; color: #eaf6ef">{{status}}</span>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════ chamber -->
+    <button class="ch" type="button" onClick="{{send}}" onDragEnter="{{dragOn}}" onDragOver="{{dragOver}}" onDragLeave="{{dragOff}}" onDrop="{{drop}}" style="flex-grow: 1; min-height: 0">
+      <svg viewBox="0 0 834 560" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%"><defs><linearGradient id="wallL" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#050907"/><stop offset="100%" stop-color="#0c1512"/></linearGradient><linearGradient id="wallR" x1="1" y1="0" x2="0" y2="0"><stop offset="0%" stop-color="#050907"/><stop offset="100%" stop-color="#0c1512"/></linearGradient><linearGradient id="ceil" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#040806"/><stop offset="100%" stop-color="#0a1210"/></linearGradient><linearGradient id="back" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#091210"/><stop offset="100%" stop-color="{{accent}}" stop-opacity=".09"/></linearGradient><linearGradient id="flr" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="{{accent}}" stop-opacity=".07"/><stop offset="100%" stop-color="{{accent}}" stop-opacity=".012"/></linearGradient><radialGradient id="pool" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="{{accent}}" stop-opacity=".34"/><stop offset="100%" stop-color="{{accent}}" stop-opacity="0"/></radialGradient><radialGradient id="fog" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="{{accent}}" stop-opacity=".075"/><stop offset="100%" stop-color="{{accent}}" stop-opacity="0"/></radialGradient><radialGradient id="vig" cx="50%" cy="46%" r="70%"><stop offset="52%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity=".55"/></radialGradient></defs><path d="M0 0 L300 128 L300 300 L0 560 Z" fill="url(#wallL)"/><path d="M834 0 L834 560 L534 300 L534 128 Z" fill="url(#wallR)"/><path d="M0 0 L834 0 L534 128 L300 128 Z" fill="url(#ceil)"/><path d="M0 560 L300 300 L534 300 L834 560 Z" fill="url(#flr)"/><rect x="300" y="128" width="234" height="172" fill="url(#back)"/><path d="M300 128 L0 0" stroke="{{accent}}" stroke-width="1" opacity=".12" fill="none"/><path d="M300 300 L0 560" stroke="{{accent}}" stroke-width="1" opacity=".12" fill="none"/><path d="M534 128 L834 0" stroke="{{accent}}" stroke-width="1" opacity=".12" fill="none"/><path d="M534 300 L834 560" stroke="{{accent}}" stroke-width="1" opacity=".12" fill="none"/><rect x="300" y="128" width="234" height="172" fill="none" stroke="{{accent}}" stroke-width="1.1" opacity=".3"/><path d="M22.8 9.7 L22.8 540.2 M811.2 9.7 L811.2 540.2 M69.2 29.5 L69.2 500.0 M764.8 29.5 L764.8 500.0 M132.5 56.5 L132.5 445.2 M701.5 56.5 L701.5 445.2 M209.9 89.6 L209.9 378.1 M624.1 89.6 L624.1 378.1 M300.0 128.0 L300.0 300.0 M534.0 128.0 L534.0 300.0" stroke="{{accent}}" stroke-width=".9" opacity=".11" fill="none"/><path class="strip" d="M75.2 34.5 L75.2 495.0" stroke="{{accent}}" stroke-width="2" opacity=".18"/><path class="strip" d="M758.8 34.5 L758.8 495.0" stroke="{{accent}}" stroke-width="2" opacity=".18"/><path class="strip" d="M138.5 61.5 L138.5 440.2" stroke="{{accent}}" stroke-width="2" opacity=".18"/><path class="strip" d="M695.5 61.5 L695.5 440.2" stroke="{{accent}}" stroke-width="2" opacity=".18"/><clipPath id="fc"><path d="M0 560 L300 300 L534 300 L834 560 Z"/></clipPath><g clip-path="url(#fc)"><path d="M-320.0 560 L159.1 300 M-238.1 560 L187.7 300 M-156.2 560 L216.4 300 M-74.3 560 L245.0 300 M7.6 560 L273.7 300 M89.4 560 L302.4 300 M171.3 560 L331.0 300 M253.2 560 L359.7 300 M335.1 560 L388.3 300 M417.0 560 L417.0 300 M498.9 560 L445.7 300 M580.8 560 L474.3 300 M662.7 560 L503.0 300 M744.6 560 L531.6 300 M826.4 560 L560.3 300 M908.3 560 L589.0 300 M990.2 560 L617.6 300 M1072.1 560 L646.3 300 M1154.0 560 L675.0 300" stroke="{{accent}}" stroke-width=".9" opacity=".13" fill="none"/><path d="M0 560.0 L834 560.0 M0 492.0 L834 492.0 M0 435.6 L834 435.6 M0 388.7 L834 388.7 M0 349.8 L834 349.8 M0 317.6 L834 317.6" stroke="{{accent}}" stroke-width=".9" opacity=".09" fill="none"/></g><path d="M0 560 L300 300 M534 300 L834 560" stroke="{{accent}}" stroke-width="1.1" opacity=".26" fill="none"/><ellipse cx="417" cy="300" rx="470" ry="240" fill="url(#fog)"/><ellipse class="pool" cx="417" cy="436" rx="410" ry="112" fill="url(#pool)"/><ellipse cx="417" cy="452" rx="384" ry="84" fill="none" stroke="{{accent}}" stroke-width="1" opacity=".16"/><path d="M33 452 A384 84 0 0 0 801 452" fill="none" stroke="{{accent}}" stroke-width="1.2" opacity=".26"/><rect x="0" y="0" width="834" height="560" fill="url(#vig)"/></svg>
+
+      <svg viewBox="0 0 834 130" preserveAspectRatio="none" style="position: absolute; left: 0; top: 0; width: 100%; height: 23.21%"><defs><linearGradient id="rec" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="{{accent}}" stop-opacity=".13"/><stop offset="100%" stop-color="{{accent}}" stop-opacity=".03"/></linearGradient></defs><path d="M284 23 L550 23 L499 117 L335 117 Z" fill="none" stroke="{{accent}}" stroke-width="1.3" opacity=".55"/><path d="M296 30 L538 30 L492 112 L342 112 Z" fill="url(#rec)" stroke="{{accent}}" stroke-width="1" opacity=".45"/><g class="cells"><path class="cell k0" d="M299.4 31.5 L332.9 31.5 L343.6 55.8 L314.3 55.8 Z" fill="{{accent}}"/><path class="cell k1" d="M339.7 31.5 L373.3 31.5 L378.8 55.8 L349.5 55.8 Z" fill="{{accent}}"/><path class="cell k2" d="M380.1 31.5 L413.6 31.5 L414.0 55.8 L384.7 55.8 Z" fill="{{accent}}"/><path class="cell k3" d="M420.4 31.5 L453.9 31.5 L449.3 55.8 L420.0 55.8 Z" fill="{{accent}}"/><path class="cell k4" d="M460.7 31.5 L494.3 31.5 L484.5 55.8 L455.2 55.8 Z" fill="{{accent}}"/><path class="cell k5" d="M501.1 31.5 L534.6 31.5 L519.7 55.8 L490.4 55.8 Z" fill="{{accent}}"/><path class="cell k6" d="M314.3 58.8 L343.6 58.8 L354.2 83.2 L329.2 83.2 Z" fill="{{accent}}"/><path class="cell k0" d="M349.5 58.8 L378.8 58.8 L384.4 83.2 L359.3 83.2 Z" fill="{{accent}}"/><path class="cell k1" d="M384.7 58.8 L414.0 58.8 L414.5 83.2 L389.4 83.2 Z" fill="{{accent}}"/><path class="cell k2" d="M420.0 58.8 L449.3 58.8 L444.6 83.2 L419.5 83.2 Z" fill="{{accent}}"/><path class="cell k3" d="M455.2 58.8 L484.5 58.8 L474.7 83.2 L449.6 83.2 Z" fill="{{accent}}"/><path class="cell k4" d="M490.4 58.8 L519.7 58.8 L504.8 83.2 L479.8 83.2 Z" fill="{{accent}}"/><path class="cell k5" d="M329.2 86.2 L354.2 86.2 L364.9 110.5 L344.1 110.5 Z" fill="{{accent}}"/><path class="cell k6" d="M359.3 86.2 L384.4 86.2 L389.9 110.5 L369.1 110.5 Z" fill="{{accent}}"/><path class="cell k0" d="M389.4 86.2 L414.5 86.2 L414.9 110.5 L394.1 110.5 Z" fill="{{accent}}"/><path class="cell k1" d="M419.5 86.2 L444.6 86.2 L439.9 110.5 L419.1 110.5 Z" fill="{{accent}}"/><path class="cell k2" d="M449.6 86.2 L474.7 86.2 L464.9 110.5 L444.1 110.5 Z" fill="{{accent}}"/><path class="cell k3" d="M479.8 86.2 L504.8 86.2 L489.9 110.5 L469.1 110.5 Z" fill="{{accent}}"/></g></svg>
+
+      <span class="beam beam-o"></span>
+      <span class="beam beam-m"></span>
+      <span class="beam beam-c"></span>
+      <span class="landing"></span>
+
+      <!-- receiving alcoves recessed into the back wall -->
+      <span class="alc alc-mbp" style="left: 40%"><span class="pring"></span>
+        <span class="mono aname">PAD 02</span>
+        <svg viewBox="0 0 60 18" style="width: 100%; height: 18px">
+          <ellipse class="ap" cx="30" cy="11" rx="26" ry="6" fill="none" stroke="{{accent}}" stroke-width="1"/>
+          <ellipse class="ap" cx="30" cy="11" rx="13" ry="3" fill="{{accent}}" opacity=".5"/>
+        </svg>
+        <span class="pbar"><i></i></span>
+        <span class="mono astat">{{aMbp}}</span></span>
+      <span class="alc alc-studio" style="left: 50%"><span class="pring"></span>
+        <span class="mono aname">PAD 03</span>
+        <svg viewBox="0 0 60 18" style="width: 100%; height: 18px">
+          <ellipse class="ap" cx="30" cy="11" rx="26" ry="6" fill="none" stroke="{{accent}}" stroke-width="1"/>
+          <ellipse class="ap" cx="30" cy="11" rx="13" ry="3" fill="{{accent}}" opacity=".5"/>
+        </svg>
+        <span class="pbar"><i></i></span>
+        <span class="mono astat">{{aStudio}}</span></span>
+      <span class="alc alc-tp" style="left: 60%"><span class="pring"></span>
+        <span class="mono aname">PAD 04</span>
+        <svg viewBox="0 0 60 18" style="width: 100%; height: 18px">
+          <ellipse class="ap" cx="30" cy="11" rx="26" ry="6" fill="none" stroke="{{accent}}" stroke-width="1"/>
+          <ellipse class="ap" cx="30" cy="11" rx="13" ry="3" fill="{{accent}}" opacity=".5"/>
+        </svg>
+        <span class="pbar"><i></i></span>
+        <span class="mono astat">{{aTp}}</span></span>
+
+      <!-- wall-mounted instrument panels -->
+      <span class="ipanel il" style="left: 26px; top: 296px">
+        <span class="ihead">PATTERN MANIFEST</span>
+        <sc-for list="{{manifest}}" as="m" hint-placeholder-count="5">
+          <span class="irow"><span class="ik">{{m.k}}</span><span class="mono iv">{{m.v}}</span></span>
+        </sc-for>
+        <span class="ibar"><i style="width: 62%"></i></span>
+        <span class="ifoot">SCAN DEPTH 62%</span>
+      </span>
+      <span class="ipanel ir" style="right: 24px; top: 40%">
+        <span class="ihead">CARRIER TRACE</span>
+        <svg viewBox="0 0 140 40" preserveAspectRatio="none" style="width: 100%; height: 38px"><polyline points="0.0 19.4 2.9 22.9 5.7 27.8 8.6 27.0 11.4 28.0 14.2 25.0 17.1 20.7 19.9 19.3 22.8 15.6 25.7 16.8 28.5 16.9 31.4 19.6 34.2 23.8 37.1 27.5 39.9 25.8 42.8 25.0 45.6 23.5 48.5 20.6 51.3 15.2 54.1 11.4 57.0 12.2 59.9 9.5 62.7 14.9 65.5 16.3 68.4 19.3 71.2 21.6 74.1 23.2 77.0 24.0 79.8 19.4 82.7 18.1 85.5 15.9 88.4 14.0 91.2 15.5 94.0 16.4 96.9 20.1 99.8 24.5 102.6 29.3 105.5 29.7 108.3 28.6 111.2 27.0 114.0 22.8 116.9 18.4 119.7 17.2 122.5 15.6 125.4 14.5 128.2 17.8 131.1 20.4 134.0 24.1 136.8 24.9 139.7 22.9" fill="none" stroke="{{accent}}" stroke-width="1.1" opacity=".85"/></svg>
+        <sc-for list="{{trace}}" as="t" hint-placeholder-count="4">
+          <span class="irow"><span class="ik">{{t.k}}</span><span class="mono iv">{{t.v}}</span></span>
+        </sc-for>
+      </span>
+
+      <span class="mote" style="left: 45%; animation-delay: 0s"></span>
+      <span class="mote" style="left: 48%; animation-delay: .13s"></span>
+      <span class="mote" style="left: 50.5%; animation-delay: .26s"></span>
+      <span class="mote" style="left: 53%; animation-delay: .39s"></span>
+      <span class="mote" style="left: 55%; animation-delay: .52s"></span>
+      <span class="mote" style="left: 46.5%; animation-delay: .65s"></span>
+      <span class="mote" style="left: 54%; animation-delay: .78s"></span>
+
+      <span class="ro">
+        <h2 class="mono">{{padTitle}}</h2>
+        <span  style="font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 500; font-size: 10px; letter-spacing: .16em; color: #8aa398">{{padNote}}</span>
+        <span class="seg-bar">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </span>
+      </span>
+
+      <span class="shock"></span>
+      <svg viewBox="0 -230 700 420" preserveAspectRatio="xMidYMid meet" style="position: absolute; left: 50%; top: 30.36%; width: 69.54%; transform: translateX(-50%); height: 62.14%"><defs><linearGradient id="deck2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="{{accent}}" stop-opacity=".30"/><stop offset="52%" stop-color="{{accent}}" stop-opacity=".10"/><stop offset="100%" stop-color="{{accent}}" stop-opacity=".035"/></linearGradient><linearGradient id="rim2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="{{accent}}" stop-opacity=".46"/><stop offset="100%" stop-color="{{accent}}" stop-opacity=".06"/></linearGradient><radialGradient id="core2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#e8fff2" stop-opacity=".92"/><stop offset="22%" stop-color="{{accent}}" stop-opacity=".58"/><stop offset="100%" stop-color="{{accent}}" stop-opacity="0"/></radialGradient></defs><defs><linearGradient id="pyl" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="{{accent}}" stop-opacity=".34"/><stop offset="60%" stop-color="{{accent}}" stop-opacity=".15"/><stop offset="100%" stop-color="{{accent}}" stop-opacity=".05"/></linearGradient><linearGradient id="pylcore" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#dffce9" stop-opacity=".95"/><stop offset="45%" stop-color="{{accent}}" stop-opacity=".5"/><stop offset="100%" stop-color="{{accent}}" stop-opacity="0"/></linearGradient></defs><path class="pyl front" d="M590.6 137.9 L632.6 137.9 L626.3 -126.0 L596.9 -126.0 Z" fill="url(#pyl)"/><path d="M590.6 137.9 L596.9 -126.0" stroke="{{accent}}" stroke-width="1.3" opacity=".62"/><path d="M632.6 137.9 L626.3 -126.0" stroke="{{accent}}" stroke-width="1.3" opacity=".62"/><path class="pylcore front" d="M611.6 134.9 L611.6 -118.0" stroke="url(#pylcore)" stroke-width="7"/><path d="M591.5 100.2 L631.7 100.2" stroke="{{accent}}" stroke-width="1.1" opacity=".30"/><path d="M592.4 62.5 L630.8 62.5" stroke="{{accent}}" stroke-width="1.1" opacity=".30"/><path d="M593.3 24.8 L629.9 24.8" stroke="{{accent}}" stroke-width="1.1" opacity=".30"/><path d="M594.2 -12.9 L629.0 -12.9" stroke="{{accent}}" stroke-width="1.1" opacity=".30"/><path d="M595.1 -50.6 L628.1 -50.6" stroke="{{accent}}" stroke-width="1.1" opacity=".30"/><path d="M596.0 -88.3 L627.2 -88.3" stroke="{{accent}}" stroke-width="1.1" opacity=".30"/><rect x="593.9" y="-134.0" width="35.4" height="8" rx="1" fill="#0a120d" stroke="{{accent}}" stroke-width="1.2" opacity=".85"/><circle class="pyltip front" cx="611.6" cy="-130.0" r="2.4" fill="{{accent}}"/><ellipse cx="611.6" cy="137.9" rx="25.0" ry="4" fill="none" stroke="{{accent}}" stroke-width="1.2" opacity=".55"/><path class="pyl front" d="M67.4 137.9 L109.4 137.9 L103.1 -126.0 L73.7 -126.0 Z" fill="url(#pyl)"/><path d="M67.4 137.9 L73.7 -126.0" stroke="{{accent}}" stroke-width="1.3" opacity=".62"/><path d="M109.4 137.9 L103.1 -126.0" stroke="{{accent}}" stroke-width="1.3" opacity=".62"/><path class="pylcore front" d="M88.4 134.9 L88.4 -118.0" stroke="url(#pylcore)" stroke-width="7"/><path d="M68.3 100.2 L108.5 100.2" stroke="{{accent}}" stroke-width="1.1" opacity=".30"/><path d="M69.2 62.5 L107.6 62.5" stroke="{{accent}}" stroke-width="1.1" opacity=".30"/><path d="M70.1 24.8 L106.7 24.8" stroke="{{accent}}" stroke-width="1.1" opacity=".30"/><path d="M71.0 -12.9 L105.8 -12.9" stroke="{{accent}}" stroke-width="1.1" opacity=".30"/><path d="M71.9 -50.6 L104.9 -50.6" stroke="{{accent}}" stroke-width="1.1" opacity=".30"/><path d="M72.8 -88.3 L104.0 -88.3" stroke="{{accent}}" stroke-width="1.1" opacity=".30"/><rect x="70.7" y="-134.0" width="35.4" height="8" rx="1" fill="#0a120d" stroke="{{accent}}" stroke-width="1.2" opacity=".85"/><circle class="pyltip front" cx="88.4" cy="-130.0" r="2.4" fill="{{accent}}"/><ellipse cx="88.4" cy="137.9" rx="25.0" ry="4" fill="none" stroke="{{accent}}" stroke-width="1.2" opacity=".55"/><path class="pyl back" d="M96.2 48.8 L126.2 48.8 L121.7 -84.0 L100.7 -84.0 Z" fill="url(#pyl)"/><path d="M96.2 48.8 L100.7 -84.0" stroke="{{accent}}" stroke-width="1.3" opacity=".36"/><path d="M126.2 48.8 L121.7 -84.0" stroke="{{accent}}" stroke-width="1.3" opacity=".36"/><path class="pylcore back" d="M111.2 45.8 L111.2 -76.0" stroke="url(#pylcore)" stroke-width="5"/><path d="M97.1 22.2 L125.3 22.2" stroke="{{accent}}" stroke-width="1.1" opacity=".18"/><path d="M98.0 -4.3 L124.4 -4.3" stroke="{{accent}}" stroke-width="1.1" opacity=".18"/><path d="M98.9 -30.9 L123.5 -30.9" stroke="{{accent}}" stroke-width="1.1" opacity=".18"/><path d="M99.8 -57.4 L122.6 -57.4" stroke="{{accent}}" stroke-width="1.1" opacity=".18"/><rect x="97.7" y="-92.0" width="27.0" height="8" rx="1" fill="#0a120d" stroke="{{accent}}" stroke-width="1.2" opacity=".55"/><circle class="pyltip back" cx="111.2" cy="-88.0" r="2.4" fill="{{accent}}"/><ellipse cx="111.2" cy="48.8" rx="19.0" ry="4" fill="none" stroke="{{accent}}" stroke-width="1.2" opacity=".32"/><path class="pyl back" d="M573.8 48.8 L603.8 48.8 L599.3 -84.0 L578.3 -84.0 Z" fill="url(#pyl)"/><path d="M573.8 48.8 L578.3 -84.0" stroke="{{accent}}" stroke-width="1.3" opacity=".36"/><path d="M603.8 48.8 L599.3 -84.0" stroke="{{accent}}" stroke-width="1.3" opacity=".36"/><path class="pylcore back" d="M588.8 45.8 L588.8 -76.0" stroke="url(#pylcore)" stroke-width="5"/><path d="M574.7 22.2 L602.9 22.2" stroke="{{accent}}" stroke-width="1.1" opacity=".18"/><path d="M575.6 -4.3 L602.0 -4.3" stroke="{{accent}}" stroke-width="1.1" opacity=".18"/><path d="M576.5 -30.9 L601.1 -30.9" stroke="{{accent}}" stroke-width="1.1" opacity=".18"/><path d="M577.4 -57.4 L600.2 -57.4" stroke="{{accent}}" stroke-width="1.1" opacity=".18"/><rect x="575.3" y="-92.0" width="27.0" height="8" rx="1" fill="#0a120d" stroke="{{accent}}" stroke-width="1.2" opacity=".55"/><circle class="pyltip back" cx="588.8" cy="-88.0" r="2.4" fill="{{accent}}"/><ellipse cx="588.8" cy="48.8" rx="19.0" ry="4" fill="none" stroke="{{accent}}" stroke-width="1.2" opacity=".32"/><path d="M18 96 A332 68 0 0 0 682 96 L682 124 A332 68 0 0 1 18 124 Z" fill="url(#rim2)"/><path d="M18.0 96.0 L18.0 124.0 M20.1 88.4 L20.1 116.4 M26.3 80.9 L26.3 108.9 M36.6 73.5 L36.6 101.5 M50.9 66.5 L50.9 94.5 M68.9 59.8 L68.9 87.8 M90.5 53.6 L90.5 81.6 M115.3 47.9 L115.3 75.9 M143.1 42.8 L143.1 70.8 M173.4 38.4 L173.4 66.4 M206.0 34.7 L206.0 62.7 M240.4 31.8 L240.4 59.8 M276.2 29.7 L276.2 57.7 M312.9 28.4 L312.9 56.4 M350.1 28.0 L350.1 56.0 M387.3 28.4 L387.3 56.4 M424.0 29.7 L424.0 57.7 M459.8 31.8 L459.8 59.8 M494.2 34.7 L494.2 62.7 M526.8 38.4 L526.8 66.4 M557.1 42.9 L557.1 70.9 M584.9 47.9 L584.9 75.9 M609.7 53.6 L609.7 81.6 M631.2 59.9 L631.2 87.9 M649.2 66.5 L649.2 94.5 M663.4 73.6 L663.4 101.6 M673.7 80.9 L673.7 108.9 M679.9 88.4 L679.9 116.4 M682.0 96.0 L682.0 124.0" stroke="{{accent}}" stroke-width=".9" opacity=".26" fill="none"/><path d="M18 96 A332 68 0 0 0 682 96" fill="none" stroke="{{accent}}" stroke-width="2" opacity="1"/><path d="M18 124 A332 68 0 0 0 682 124" fill="none" stroke="{{accent}}" stroke-width="1.1" opacity=".34"/><ellipse cx="350" cy="96" rx="332" ry="68" fill="url(#deck2)"/><path d="M672.0 96.0 L500.0 96.0 M647.5 121.3 L488.6 107.9 M577.7 142.7 L456.1 117.9 M473.2 157.0 L407.4 124.6 M350.0 162.0 L350.0 127.0 M226.8 157.0 L292.6 124.6 M122.3 142.7 L243.9 117.9 M52.5 121.3 L211.4 107.9 M28.0 96.0 L200.0 96.0 M52.5 70.7 L211.4 84.1 M122.3 49.3 L243.9 74.1 M226.8 35.0 L292.6 67.4 M350.0 30.0 L350.0 65.0 M473.2 35.0 L407.4 67.4 M577.7 49.3 L456.1 74.1 M647.5 70.7 L488.6 84.1" stroke="{{accent}}" stroke-width="1" opacity=".14" fill="none"/><path class="pad-seg s0" d="M663.7 98.7 A314 64 0 0 1 644.9 118.0" fill="none" stroke="{{accent}}" stroke-width="1.8"/><path class="pad-seg s1" d="M634.8 122.9 A314 64 0 0 1 581.1 139.3" fill="none" stroke="{{accent}}" stroke-width="1.8"/><path class="pad-seg s2" d="M562.5 143.1 A314 64 0 0 1 482.2 154.1" fill="none" stroke="{{accent}}" stroke-width="1.8"/><path class="pad-seg s3" d="M457.9 156.1 A314 64 0 0 1 363.1 159.9" fill="none" stroke="{{accent}}" stroke-width="1.8"/><path class="pad-seg s4" d="M336.9 159.9 A314 64 0 0 1 242.1 156.1" fill="none" stroke="{{accent}}" stroke-width="1.8"/><path class="pad-seg s5" d="M217.8 154.1 A314 64 0 0 1 137.5 143.1" fill="none" stroke="{{accent}}" stroke-width="1.8"/><path class="pad-seg s6" d="M118.9 139.3 A314 64 0 0 1 65.2 122.9" fill="none" stroke="{{accent}}" stroke-width="1.8"/><path class="pad-seg s7" d="M55.1 118.0 A314 64 0 0 1 36.3 98.7" fill="none" stroke="{{accent}}" stroke-width="1.8"/><path class="pad-seg s0" d="M36.3 93.3 A314 64 0 0 1 55.1 74.0" fill="none" stroke="{{accent}}" stroke-width="1.8"/><path class="pad-seg s1" d="M65.2 69.1 A314 64 0 0 1 118.9 52.7" fill="none" stroke="{{accent}}" stroke-width="1.8"/><path class="pad-seg s2" d="M137.5 48.9 A314 64 0 0 1 217.8 37.9" fill="none" stroke="{{accent}}" stroke-width="1.8"/><path class="pad-seg s3" d="M242.1 35.9 A314 64 0 0 1 336.9 32.1" fill="none" stroke="{{accent}}" stroke-width="1.8"/><path class="pad-seg s4" d="M363.1 32.1 A314 64 0 0 1 457.9 35.9" fill="none" stroke="{{accent}}" stroke-width="1.8"/><path class="pad-seg s5" d="M482.2 37.9 A314 64 0 0 1 562.5 48.9" fill="none" stroke="{{accent}}" stroke-width="1.8"/><path class="pad-seg s6" d="M581.1 52.7 A314 64 0 0 1 634.8 69.1" fill="none" stroke="{{accent}}" stroke-width="1.8"/><path class="pad-seg s7" d="M644.9 74.0 A314 64 0 0 1 663.7 93.3" fill="none" stroke="{{accent}}" stroke-width="1.8"/><ellipse cx="350" cy="96" rx="322" ry="66" fill="none" stroke="{{accent}}" stroke-width="1" opacity="0.42"/><ellipse cx="350" cy="96" rx="262" ry="54" fill="none" stroke="{{accent}}" stroke-width="1" opacity="0.17"/><ellipse cx="350" cy="96" rx="206" ry="42" fill="none" stroke="{{accent}}" stroke-width="1" opacity="0.15"/><ellipse cx="350" cy="96" rx="150" ry="31" fill="none" stroke="{{accent}}" stroke-width="1" opacity="0.34"/><ellipse class="pad-core" cx="350" cy="96" rx="150" ry="31" fill="url(#core2)"/><ellipse cx="350" cy="96" rx="150" ry="31" fill="none" stroke="{{accent}}" stroke-width="1.5" opacity=".9"/><rect x="649.2" y="117.0" width="15" height="10" rx="1" fill="#081009" stroke="{{accent}}" stroke-width="1" opacity=".8"/><circle class="pad-node n0" cx="656.7" cy="122.0" r="2.3" fill="{{accent}}"/><rect x="469.6" y="153.8" width="15" height="10" rx="1" fill="#081009" stroke="{{accent}}" stroke-width="1" opacity=".8"/><circle class="pad-node n1" cx="477.1" cy="158.8" r="2.3" fill="{{accent}}"/><rect x="215.4" y="153.8" width="15" height="10" rx="1" fill="#081009" stroke="{{accent}}" stroke-width="1" opacity=".8"/><circle class="pad-node n2" cx="222.9" cy="158.8" r="2.3" fill="{{accent}}"/><rect x="35.8" y="117.0" width="15" height="10" rx="1" fill="#081009" stroke="{{accent}}" stroke-width="1" opacity=".8"/><circle class="pad-node n3" cx="43.3" cy="122.0" r="2.3" fill="{{accent}}"/><rect x="35.8" y="65.0" width="15" height="10" rx="1" fill="#081009" stroke="{{accent}}" stroke-width="1" opacity=".8"/><circle class="pad-node n4" cx="43.3" cy="70.0" r="2.3" fill="{{accent}}"/><rect x="215.4" y="28.2" width="15" height="10" rx="1" fill="#081009" stroke="{{accent}}" stroke-width="1" opacity=".8"/><circle class="pad-node n5" cx="222.9" cy="33.2" r="2.3" fill="{{accent}}"/><rect x="469.6" y="28.2" width="15" height="10" rx="1" fill="#081009" stroke="{{accent}}" stroke-width="1" opacity=".8"/><circle class="pad-node n6" cx="477.1" cy="33.2" r="2.3" fill="{{accent}}"/><rect x="649.2" y="65.0" width="15" height="10" rx="1" fill="#081009" stroke="{{accent}}" stroke-width="1" opacity=".8"/><circle class="pad-node n7" cx="656.7" cy="70.0" r="2.3" fill="{{accent}}"/></svg>
+
+      <span class="load">
+        <span class="pkt"><b></b><em></em>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5"></path></svg>
+          <span class="mono" style="flex-grow: 1; text-align: left">Q3-review.pdf</span><span class="mono" style="color: #8aa398">4.2 MB</span></span>
+        <span class="pkt"><b></b><em></em>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+          <span class="mono" style="flex-grow: 1; text-align: left">shoot-raws</span><span class="mono" style="color: #8aa398">312 items</span></span>
+        <span class="pkt"><b></b><em></em>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1"></rect><path d="m3 15 5-5 4 4 3-3 6 6"></path></svg>
+          <span class="mono" style="flex-grow: 1; text-align: left">site-hero.png</span><span class="mono" style="color: #8aa398">2.1 MB</span></span>
+      </span>
+
+      
+
+      <span class="callout" style="left: 24px; top: 88.21%; line-height: 1.5; padding-top: 6px; border-top: 1px solid rgba(120,230,160,.2)">ANNULAR CONFINEMENT<br />16 SEGMENTS · CHAMBER 01</span>
+      <span class="callout" style="right: 24px; top: 88.21%; width: 150px; text-align: right; line-height: 1.5; padding-top: 6px; border-top: 1px solid rgba(120,230,160,.2)">PHASE COIL ARRAY<br />19 EMITTERS · CEILING</span>
+
+      <span class="sweep"></span>
+      <span class="ch-noise"></span>
+    </button>
+
+    <!-- control bar -->
+    <div class="fade" style="position: relative; display: flex; align-items: center; gap: 8px; margin-top: 12px">
+      <button class="tp-chip mono" type="button" style="padding: 8px 15px; font-size: 11px; letter-spacing: .06em; color: #b3c9bd; box-shadow: inset 0 0 0 1px rgba(120,230,160,.22)">LOAD FILES</button>
+      <button class="tp-chip mono" type="button" style="padding: 8px 15px; font-size: 11px; letter-spacing: .06em; color: #b3c9bd; box-shadow: inset 0 0 0 1px rgba(120,230,160,.22)">LOAD FOLDER</button>
+      <span style="font-size: 11px; color: #8aa398">or drop anything onto the pad</span>
+      <div style="flex-grow: 1"></div>
+      <span  style="font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 500; font-size: 9px; letter-spacing: .16em; color: #8aa398">{{footNote}}</span>
+    </div>
+  </main>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#74e6a0","options":["#74e6a0","#5ddc8f","#9cf5bd","#3fcf7c"]},"$preview":{"width":1120,"height":760}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { picked: ['mbp', 'studio'], phase: 'idle', drag: false };
+    this.timers = [];
+  }
+  componentWillUnmount() { this.timers.forEach((t) => clearTimeout(t)); }
+  toggle(id) {
+    const picked = this.state.picked.includes(id)
+      ? this.state.picked.filter((v) => v !== id)
+      : this.state.picked.concat([id]);
+    this.setState({ picked: picked });
+  }
+  setDrag(v) { if (this.state.drag !== v) this.setState({ drag: v }); }
+  send() {
+    if (this.state.phase !== 'idle' || this.state.picked.length === 0) return;
+    this.setState({ phase: 'engage' });
+    this.timers.push(setTimeout(() => this.setState({ phase: 'beam' }), 1200));
+    this.timers.push(setTimeout(() => this.setState({ phase: 'done' }), 3200));
+    this.timers.push(setTimeout(() => this.setState({ phase: 'idle' }), 4900));
+  }
+  renderVals() {
+    const acc = this.props.accent ?? '#74e6a0';
+    const mono = "font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;";
+    const raw = [
+      { id: 'mbp', name: 'MacBook Pro', sub: 'PAD 02 · 192.168.1.31', online: true },
+      { id: 'studio', name: 'Studio', sub: 'PAD 03 · 192.168.1.19', online: true },
+      { id: 'thinkpad', name: 'ThinkPad', sub: 'PAD 04 · DARK 19H', online: false }
+    ];
+    const devices = raw.map((d) => {
+      const sel = this.state.picked.includes(d.id);
+      return {
+        name: d.name,
+        sub: d.sub,
+        meta: sel ? 'LOCKED' : (d.online ? 'READY' : 'DARK'),
+        pick: () => this.toggle(d.id),
+        chipStyle: 'display: flex; align-items: center; gap: 9px; padding: 8px 9px; '
+          + (sel ? 'background: rgba(120,230,160,.09); box-shadow: inset 0 0 0 1px ' + acc + '; color: #eaf6ef;'
+                 : 'box-shadow: inset 0 0 0 1px rgba(120,230,160,.14); color: #8aa398;'),
+        boxStyle: 'width: 9px; height: 9px; flex-shrink: 0; '
+          + (sel ? 'background: ' + acc + ';' : 'box-shadow: inset 0 0 0 1px ' + (d.online ? acc : '#5f7568') + ';'),
+        metaStyle: mono + ' font-size: 8.5px; letter-spacing: .12em; color: ' + (sel ? acc : '#8aa398') + ';'
+      };
+    });
+    const picked = this.state.picked;
+    const count = picked.length;
+    const phase = this.state.phase;
+    const beam = phase === 'beam';
+    const engage = phase === 'engage';
+    const done = phase === 'done';
+    const selClass = [
+      picked.includes('mbp') ? 'sel-mbp' : '',
+      picked.includes('studio') ? 'sel-studio' : '',
+      picked.includes('thinkpad') ? 'sel-tp' : ''
+    ].filter(Boolean).join(' ');
+    return {
+      accent: acc,
+      devices: devices,
+      phase: phase,
+      selClass: selClass,
+      dragClass: this.state.drag ? 'drag' : '',
+      dragOn: (e) => { if (e && e.preventDefault) e.preventDefault(); this.setDrag(true); },
+      dragOver: (e) => { if (e && e.preventDefault) e.preventDefault(); this.setDrag(true); },
+      dragOff: (e) => { if (e && e.preventDefault) e.preventDefault(); this.setDrag(false); },
+      drop: (e) => { if (e && e.preventDefault) e.preventDefault(); this.setDrag(false); this.send(); },
+      aMbp: picked.includes('mbp') ? (engage ? 'SCANNING' : beam ? 'RECEIVING' : done ? 'REASSEMBLED' : 'LOCKED') : 'STANDBY',
+      aStudio: picked.includes('studio') ? (engage ? 'SCANNING' : beam ? 'RECEIVING' : done ? 'REASSEMBLED' : 'LOCKED') : 'STANDBY',
+      aTp: picked.includes('thinkpad') ? (beam || done ? 'BUFFERED' : 'HOLDING') : 'DARK',
+      status: this.state.drag && phase === 'idle' ? 'PAD ARMED' : engage ? 'PATTERN SCAN' : beam ? 'BEAM ACTIVE' : done ? 'REASSEMBLED' : count === 0 ? 'NO DESTINATION' : 'PAD READY',
+      padTitle: this.state.drag && phase === 'idle' ? 'RELEASE TO TRANSPORT' : engage ? 'SCANNING PATTERN' : beam ? 'IN TRANSIT' : done ? 'REASSEMBLED' : 'PLACE IT ON THE PAD',
+      padNote: this.state.drag && phase === 'idle'
+        ? 'CONFINEMENT FIELD UP · ' + count + ' PAD' + (count === 1 ? '' : 'S') + ' STANDING BY'
+        : engage
+        ? 'READING 318 OBJECTS · 11.8 GB · BUILDING MANIFEST'
+        : beam
+          ? 'STREAMING TO ' + count + ' PAD' + (count === 1 ? '' : 'S') + ' · 84.2 MB/S · COHERENCE ROLLING'
+          : done
+            ? 'EVERY PAD RETURNED A MATCHING BLAKE3 DIGEST'
+            : count === 0 ? 'LOCK A DESTINATION PAD IN THE LEFT COLUMN' : 'DROP ANYWHERE IN THIS CHAMBER',
+      headCells: [
+        { k: 'LOCKED', v: count + ' of 3', style: mono + ' font-size: 13px; color: #eaf6ef;' },
+        { k: 'BEAM', v: beam ? '84.2 MB/s' : '—', style: mono + ' font-size: 13px; color: ' + (beam ? acc : '#8aa398') + ';' },
+        { k: 'BUFFER', v: engage || beam ? '318 obj' : '0 obj', style: mono + ' font-size: 13px; color: #eaf6ef;' },
+        { k: 'COHERENCE', v: 'BLAKE3', style: mono + ' font-size: 13px; color: ' + acc + ';' }
+      ],
+      railNote: picked.includes('thinkpad')
+        ? 'A dark pad holds the pattern in its buffer and reassembles it when that computer wakes.'
+        : 'Fan-out is a single pass. Every locked pad reassembles its own copy.',
+      manifest: [
+        { k: 'OBJECTS', v: '318' },
+        { k: 'BYTES', v: '11.8 GB' },
+        { k: 'DEEPEST', v: '7 levels' },
+        { k: 'LARGEST', v: '2.4 GB' },
+        { k: 'DIGEST', v: 'BLAKE3' }
+      ],
+      trace: [
+        { k: 'RTT', v: '0.8 ms' },
+        { k: 'LOSS', v: '0.00%' },
+        { k: 'MTU', v: '1500' },
+        { k: 'HOPS', v: '1' }
+      ],
+      arrivals: [
+        { name: 'field-notes.md', size: '38 KB', hash: 'MATCH 7f2a' },
+        { name: 'render-out/', size: '11.8 GB', hash: 'MATCH 19bd' }
+      ],
+      footNote: 'CHAMBER 01 · 16-SEG ANNULAR PAD · 21-COIL ARRAY · PROTOCOL 1',
+      send: () => this.send()
+    };
+  }
+}
+</script>
+</body>
+</html>

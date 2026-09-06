@@ -1,0 +1,184 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #74e6a0; } a:hover { color: #a8f5c6; }
+    .q * { box-sizing: border-box; }
+    .q button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+    .mono { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+
+    .nav { position: relative; font-size: 13px; color: #7f9689; padding-bottom: 3px; transition: color 160ms; }
+    .nav:hover { color: #d6e5db; }
+    .nav.on { color: #eaf6ef; }
+    .nav.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--acc, #74e6a0); }
+
+    .q-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 240px; pointer-events: none;
+      background: radial-gradient(64% 100% at 50% 130%, rgba(120,230,160,.09), transparent 72%); }
+
+    .row { transition: background 160ms; }
+    .row:hover { background: rgba(120,230,160,.045); }
+    .act { opacity: .4; transition: opacity 160ms; }
+    .row:hover .act, .det:hover .act { opacity: 1; }
+    .chip { transition: color 160ms, box-shadow 160ms; }
+    .chip:hover { box-shadow: inset 0 0 0 1px rgba(120,230,160,.5); color: #d6e5db; }
+
+    .flight { position: relative; overflow: hidden; }
+    .flight::after { content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(120,230,160,.07), transparent);
+      animation: pass 2.2s linear infinite; }
+    @keyframes pass { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+    .fill { animation: fill 7s linear infinite; }
+    @keyframes fill { from { width: 12%; } to { width: 94%; } }
+    .tick { animation: tick 1.4s ease-in-out infinite; }
+    @keyframes tick { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+    .fade { animation: fade 600ms ease both; }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  </style>
+</helmet>
+
+<div class="q" style="width: 1120px; height: 760px; position: relative; overflow: hidden; background: #0a100d; color: #eaf6ef; font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; --acc: {{accent}}">
+  <span class="q-floor"></span>
+
+  <header style="position: relative; z-index: 4; display: flex; align-items: center; gap: 26px; padding: 22px 28px">
+    <span style="display: flex; align-items: center; gap: 9px">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="{{accent}}" stroke-width="1.2">
+        <ellipse cx="10" cy="15" rx="8" ry="3"></ellipse><path d="M10 12V2m0 0L6.5 5.5M10 2l3.5 3.5"></path>
+      </svg>
+      <span style="font-size: 13px; font-weight: 500; letter-spacing: -.01em">Fileporter</span>
+    </span>
+    <nav style="display: flex; gap: 20px">
+      <button class="nav" type="button">Transport</button>
+      <button class="nav" type="button">Pads</button>
+      <button class="nav on" type="button">Log</button>
+      <button class="nav" type="button">Config</button>
+    </nav>
+    <div style="flex-grow: 1"></div>
+    <span style="display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: #8aa398">
+      Workshop iMac
+      <span style="width: 1px; height: 11px; background: rgba(120,230,160,.24)"></span>
+      <span style="width: 5px; height: 5px; border-radius: 50%; background: {{accent}}"></span>1 in flight
+    </span>
+  </header>
+
+  <div class="fade" style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 11px; padding-top: 20px">
+    <h1 style="margin: 0; font-size: 44px; font-weight: 300; letter-spacing: -.032em">{{headline}}</h1>
+    <p style="margin: 0; font-size: 14.5px; font-weight: 300; color: #8aa398">{{sub}}</p>
+  </div>
+
+  <!-- in flight -->
+  <div class="fade flight" style="position: relative; margin: 28px 90px 0; padding: 13px 16px; box-shadow: inset 0 0 0 1px rgba(120,230,160,.22)">
+    <div style="position: relative; display: flex; align-items: center; gap: 12px">
+      <span class="mono" style="font-size: 11px; letter-spacing: .1em; color: {{accent}}">OUTBOUND</span>
+      <span class="mono" style="font-size: 14px; color: #eaf6ef">render-out</span>
+      <span class="mono" style="font-size: 12px; color: #8aa398">312 items · 11.8 GB</span>
+      <div style="flex-grow: 1"></div>
+      <span class="tick mono" style="font-size: 12.5px; color: {{accent}}">84.2 MB/s</span>
+      <button class="chip mono" type="button" style="padding: 4px 11px; font-size: 10.5px; letter-spacing: .06em; color: #8aa398; box-shadow: inset 0 0 0 1px rgba(120,230,160,.22)">ABORT</button>
+    </div>
+    <div style="position: relative; height: 2px; margin-top: 12px; background: rgba(120,230,160,.14)">
+      <span class="fill" style="display: block; height: 100%; background: {{accent}}"></span>
+    </div>
+    <div style="position: relative; display: flex; gap: 24px; margin-top: 10px; font-size: 12px; color: #8aa398">
+      <span>MacBook Pro <span class="mono" style="color: #b3c9bd">78%</span></span>
+      <span>Studio <span class="mono" style="color: #b3c9bd">71%</span></span>
+    </div>
+  </div>
+
+  <!-- history -->
+  <div class="fade" style="position: relative; margin: 22px 90px 0">
+    <sc-for list="{{records}}" as="r" hint-placeholder-count="7">
+      <div>
+        <button class="row" type="button" onClick="{{r.toggle}}" style="width: 100%; display: grid; grid-template-columns: 18px 66px minmax(0, 1fr) 132px 104px 96px 84px; gap: 14px; align-items: center; padding: 8px 12px; margin: 0 -12px; text-align: left">
+          <span style="{{r.caret}}">›</span>
+          <span style="{{r.vecStyle}}">{{r.vec}}</span>
+          <span class="mono" style="font-size: 13px; color: #eaf6ef">{{r.payload}}</span>
+          <span style="font-size: 12.5px; color: #b3c9bd">{{r.pad}}</span>
+          <span class="mono" style="font-size: 12px; color: #8aa398">{{r.size}}</span>
+          <span style="{{r.stateStyle}}">{{r.state}}</span>
+          <span style="font-size: 12.5px; color: #8aa398; text-align: right">{{r.when}}</span>
+        </button>
+        <sc-if value="{{r.open}}" hint-placeholder-val="{{false}}">
+          <div class="det" style="padding: 6px 0 14px 98px">
+            <sc-for list="{{r.items}}" as="it" hint-placeholder-count="3">
+              <div style="display: grid; grid-template-columns: minmax(0, 1fr) 96px 216px; gap: 14px; align-items: center; padding: 5px 0">
+                <span class="mono" style="font-size: 12.5px; color: #cfe3d7">{{it.name}}</span>
+                <span class="mono" style="font-size: 11.5px; color: #8aa398">{{it.size}}</span>
+                <span class="act" style="display: flex; gap: 7px; justify-self: end">
+                  <span class="chip mono" style="padding: 3px 10px; font-size: 10.5px; color: #8aa398; box-shadow: inset 0 0 0 1px rgba(120,230,160,.22)">REVEAL</span>
+                  <span class="chip mono" style="padding: 3px 10px; font-size: 10.5px; color: #8aa398; box-shadow: inset 0 0 0 1px rgba(120,230,160,.22)">COPY</span>
+                  <span class="chip mono" style="padding: 3px 10px; font-size: 10.5px; color: #8aa398; box-shadow: inset 0 0 0 1px rgba(120,230,160,.22)">MOVE</span>
+                </span>
+              </div>
+            </sc-for>
+            <p style="margin: 8px 0 0; font-size: 11.5px; color: #8aa398">Move stages the system clipboard — paste in your file manager to finish it.</p>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 20px; padding: 0 28px 26px; font-size: 12px; color: #8aa398">
+    <span>Kept 30 days</span>
+    <span>Staging <span class="mono" style="color: #b3c9bd">0 bytes</span></span>
+    <span>Nothing has failed verification</span>
+    <div style="flex-grow: 1"></div>
+    <button class="chip" type="button" style="padding: 5px 14px; border-radius: 999px; font-size: 12.5px; color: #8aa398; box-shadow: inset 0 0 0 1px rgba(120,230,160,.24)">Export log</button>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#74e6a0","options":["#74e6a0","#5ddc8f","#9cf5bd","#3fcf7c"]},"$preview":{"width":1120,"height":760}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { open: 'r6' };
+  }
+  toggle(id) { this.setState({ open: this.state.open === id ? null : id }); }
+  renderVals() {
+    const acc = this.props.accent ?? '#74e6a0';
+    const mono = "font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;";
+    const raw = [
+      { id: 'r1', out: true,  payload: 'site-hero.png',     pad: 'Studio',      size: '2.1 MB',   state: 'Verified', ok: true, when: '2 min' },
+      { id: 'r2', out: false, payload: 'field-notes.md',    pad: 'MacBook Pro', size: '38 KB',    state: 'Verified', ok: true, when: '14 min',
+        items: [{ name: 'field-notes.md', size: '38 KB' }] },
+      { id: 'r3', out: true,  payload: 'Q3-review.pdf',     pad: '2 pads',      size: '4.2 MB',   state: 'Verified', ok: true, when: '1 h' },
+      { id: 'r4', out: false, payload: 'shoot-raws/',       pad: 'Studio',      size: '48.3 GB',  state: 'Verified', ok: true, when: '3 h',
+        items: [{ name: 'shoot-raws/', size: '312 items' }] },
+      { id: 'r5', out: true,  payload: 'invoices-2026-q3/', pad: 'ThinkPad',    size: '84 items', state: 'Held',     ok: null, when: '5 h' },
+      { id: 'r6', out: false, payload: 'contracts/',        pad: 'ThinkPad',    size: '12 items', state: 'Verified', ok: true, when: 'Yesterday',
+        items: [{ name: 'msa-2026.pdf', size: '1.1 MB' }, { name: 'sow-04.pdf', size: '820 KB' }, { name: 'addendum.docx', size: '96 KB' }] },
+      { id: 'r7', out: true,  payload: 'timelapse.mov',     pad: 'MacBook Pro', size: '6.7 GB',   state: 'Resumed',  ok: true, when: 'Yesterday' }
+    ];
+    const open = this.state.open;
+    return {
+      accent: acc,
+      headline: 'Twenty-four transports.',
+      sub: '184 GB moved in the last thirty days. Every one verified end to end.',
+      records: raw.map((r) => {
+        const items = r.items ?? [];
+        const isOpen = open === r.id && items.length > 0;
+        return {
+          payload: r.payload, pad: r.pad, size: r.size, state: r.state, when: r.when,
+          open: isOpen, items: items,
+          toggle: () => this.toggle(r.id),
+          caret: mono + ' font-size: 12px; display: inline-block; color: ' + (isOpen ? acc : '#5f7568')
+                 + '; transform: rotate(' + (isOpen ? '90deg' : '0deg') + ');',
+          vec: r.out ? 'Sent' : 'Received',
+          vecStyle: 'font-size: 12.5px; color: ' + (r.out ? '#8aa398' : acc) + ';',
+          stateStyle: 'font-size: 12.5px; color: ' + (r.ok === null ? '#e0c56a' : '#8aa398') + ';'
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #74e6a0; } a:hover { color: #a8f5c6; }
+    .pr * { box-sizing: border-box; }
+    .pr button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+    .pr input { font: inherit; color: inherit; }
+
+    .pr-grid { position: absolute; inset: 0; pointer-events: none; opacity: .55;
+      background-image: linear-gradient(rgba(120,230,160,.045) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(120,230,160,.045) 1px, transparent 1px);
+      background-size: 28px 28px; }
+
+    .pr-nav { transition: color 90ms linear, background 90ms linear; }
+    .pr-nav:hover { color: #d6f5e2; background: rgba(120,230,160,.07); }
+    .pr-nav.on { color: #0b120e; background: var(--acc, #74e6a0); }
+
+    /* reticle */
+    .pr-target { position: relative; transition: background 120ms linear; }
+    .pr-target:hover { background: rgba(120,230,160,.035); }
+    .pr-br { position: absolute; width: 22px; height: 22px; transition: all 160ms steps(4, end); }
+    .pr-target:hover .pr-br { width: 34px; height: 34px; }
+    .pr-cross { transition: opacity 120ms linear; opacity: .5; }
+    .pr-target:hover .pr-cross { opacity: 1; }
+
+    .pr-scan { position: absolute; left: 0; right: 0; height: 1px; background: var(--acc, #74e6a0);
+      box-shadow: 0 0 14px var(--acc, #74e6a0); opacity: .5; animation: pr-scan 3.4s linear infinite; }
+    @keyframes pr-scan { 0% { top: 0; } 100% { top: 100%; } }
+
+    .pr-tick { animation: pr-tick 1.05s steps(1, end) infinite; }
+    @keyframes pr-tick { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+    .pr-in { animation: pr-in 340ms steps(6, end) both; }
+    @keyframes pr-in { from { opacity: 0; } to { opacity: 1; } }
+
+    .pr-chip { transition: background 100ms linear, color 100ms linear, box-shadow 100ms linear; }
+    .pr-chip:hover { box-shadow: inset 0 0 0 1px var(--acc, #74e6a0); }
+    .pr-row { transition: background 100ms linear; }
+    .pr-row:hover { background: rgba(120,230,160,.05); }
+    .pr-cta { transition: background 100ms linear, color 100ms linear; }
+    .pr-cta:hover { background: var(--acc, #74e6a0); color: #0b120e; }
+
+    .pr-bar i { display: block; height: 100%; width: 0; background: var(--acc, #74e6a0); }
+    .phase-sending .pr-bar i { animation: pr-bar 2.2s steps(24, end) forwards; }
+    @keyframes pr-bar { from { width: 0; } to { width: 78%; } }
+    .phase-done .pr-bar i { width: 100%; }
+    .phase-sending .pr-scan { animation-duration: .7s; opacity: 1; }
+    .phase-idle .pr-bar { opacity: .25; }
+  </style>
+</helmet>
+
+<div class="pr phase-{{phase}}" style="width: 1120px; height: 760px; display: flex; overflow: hidden; background: #0b120e; color: #d6e5db; font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; --acc: {{accent}}">
+
+  <!-- rail -->
+  <aside style="position: relative; display: flex; flex-direction: column; gap: 20px; width: 246px; flex-shrink: 0; padding: 20px 18px; border-right: 1px solid rgba(120,230,160,.13); background: #080d0a">
+    <div style="display: flex; align-items: center; gap: 9px">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="{{accent}}" stroke-width="1.3">
+        <rect x="1.5" y="1.5" width="15" height="15"></rect><path d="M9 13V5m0 0-3 3m3-3 3 3"></path>
+      </svg>
+      <span style="font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; font-size: 12.5px; font-weight: 600; letter-spacing: .12em">FILEPORTER</span>
+    </div>
+
+    <nav style="display: flex; flex-direction: column; gap: 1px">
+      <button class="pr-nav on" style="text-align: left; padding: 8px 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em">01  SEND</button>
+      <button class="pr-nav" style="text-align: left; padding: 8px 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em; color: #7f9689">02  DEVICES</button>
+      <button class="pr-nav" style="text-align: left; padding: 8px 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em; color: #7f9689">03  ACTIVITY</button>
+      <button class="pr-nav" style="text-align: left; padding: 8px 11px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: .06em; color: #7f9689">04  SETTINGS</button>
+    </nav>
+
+    <div style="height: 1px; background: rgba(120,230,160,.13)"></div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: .16em; color: #6d8377">TARGETS</span>
+      <sc-for list="{{devices}}" as="d" hint-placeholder-count="3">
+        <button class="pr-chip" style="{{d.chipStyle}}" onClick="{{d.pick}}">
+          <span style="{{d.boxStyle}}"></span>
+          <span style="flex-grow: 1; text-align: left">{{d.name}}</span>
+          <span style="{{d.metaStyle}}">{{d.meta}}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <div style="flex-grow: 1"></div>
+    <div style="display: flex; flex-direction: column; gap: 6px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 10.5px; color: #6d8377">
+      <div style="display: flex; justify-content: space-between"><span>LISTEN</span><span style="color: {{accent}}">192.168.1.18:48721</span></div>
+      <div style="display: flex; justify-content: space-between"><span>MDNS</span><span style="color: {{accent}}">ADVERTISING</span></div>
+      <div style="display: flex; justify-content: space-between"><span>PROTO</span><span>v1</span></div>
+    </div>
+  </aside>
+
+  <!-- main -->
+  <main style="position: relative; flex-grow: 1; display: flex; flex-direction: column; padding: 24px 28px">
+    <div class="pr-grid"></div>
+
+    <div class="pr-in" style="position: relative; display: flex; align-items: baseline; gap: 12px">
+      <h1 style="margin: 0; font-size: 19px; font-weight: 500; letter-spacing: -.01em">Send</h1>
+      <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #6d8377">{{headline}}</span>
+      <div style="flex-grow: 1"></div>
+      <span class="pr-tick" style="width: 7px; height: 7px; background: {{accent}}"></span>
+      <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: #7f9689">{{status}}</span>
+    </div>
+
+    <!-- reticle -->
+    <button class="pr-target pr-in" onClick="{{send}}" style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; margin-top: 18px; height: 348px; overflow: hidden; background: rgba(120,230,160,.018); box-shadow: inset 0 0 0 1px rgba(120,230,160,.16)">
+      <div class="pr-scan"></div>
+      <span class="pr-br" style="top: 10px; left: 10px; border-top: 2px solid {{accent}}; border-left: 2px solid {{accent}}"></span>
+      <span class="pr-br" style="top: 10px; right: 10px; border-top: 2px solid {{accent}}; border-right: 2px solid {{accent}}"></span>
+      <span class="pr-br" style="bottom: 10px; left: 10px; border-bottom: 2px solid {{accent}}; border-left: 2px solid {{accent}}"></span>
+      <span class="pr-br" style="bottom: 10px; right: 10px; border-bottom: 2px solid {{accent}}; border-right: 2px solid {{accent}}"></span>
+
+      <svg class="pr-cross" width="118" height="118" viewBox="0 0 118 118" fill="none" style="position: relative">
+        <path d="M59 8v30M59 80v30M8 59h30M80 59h30" stroke="{{accent}}" stroke-width="1"></path>
+        <rect x="35" y="35" width="48" height="48" stroke="{{accent}}" stroke-width="1"></rect>
+        <path d="M59 71V47m0 0-8 8m8-8 8 8" stroke="{{accent}}" stroke-width="1.6" stroke-linecap="square"></path>
+      </svg>
+
+      <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 19px; font-weight: 500; letter-spacing: .1em; color: #eaf6ef">{{targetLabel}}</span>
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .1em; color: #6d8377">{{targetNote}}</span>
+      </div>
+
+      <div class="pr-bar" style="position: relative; width: 420px; height: 4px; background: rgba(120,230,160,.12)"><i></i></div>
+
+      <div style="position: relative; display: flex; gap: 8px">
+        <span class="pr-chip" style="padding: 7px 14px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; letter-spacing: .06em; color: #a9c4b6; box-shadow: inset 0 0 0 1px rgba(120,230,160,.22)">BROWSE FILES</span>
+        <span class="pr-chip" style="padding: 7px 14px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px; letter-spacing: .06em; color: #a9c4b6; box-shadow: inset 0 0 0 1px rgba(120,230,160,.22)">BROWSE FOLDER</span>
+      </div>
+    </button>
+
+    <!-- telemetry -->
+    <div class="pr-in" style="position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-top: 16px; background: rgba(120,230,160,.13)">
+      <sc-for list="{{stats}}" as="s" hint-placeholder-count="4">
+        <div style="display: flex; flex-direction: column; gap: 5px; padding: 12px 14px; background: #0b120e">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 9.5px; letter-spacing: .17em; color: #6d8377">{{s.k}}</span>
+          <span style="{{s.style}}">{{s.v}}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- arrivals -->
+    <div class="pr-in" style="position: relative; margin-top: 16px">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 9.5px; letter-spacing: .17em; color: #6d8377">INBOUND · COMPLETE</span>
+        <div style="flex-grow: 1; height: 1px; background: rgba(120,230,160,.13)"></div>
+      </div>
+      <sc-for list="{{arrivals}}" as="a" hint-placeholder-count="2">
+        <div class="pr-row" style="display: grid; grid-template-columns: minmax(0, 1fr) 130px 96px 148px; align-items: center; gap: 12px; padding: 9px 10px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11.5px">
+          <span style="color: #eaf6ef">{{a.name}}</span>
+          <span style="color: #6d8377">{{a.size}}</span>
+          <span style="color: {{accent}}">{{a.hash}}</span>
+          <div style="display: flex; gap: 6px; justify-self: end">
+            <span class="pr-cta" style="padding: 4px 10px; letter-spacing: .06em; color: #a9c4b6; box-shadow: inset 0 0 0 1px rgba(120,230,160,.22)">COPY</span>
+            <span class="pr-cta" style="padding: 4px 10px; letter-spacing: .06em; color: #a9c4b6; box-shadow: inset 0 0 0 1px rgba(120,230,160,.22)">CUT</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#74e6a0","options":["#74e6a0","#5ddc8f","#9cf5bd","#3fcf7c"]},"$preview":{"width":1120,"height":760}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { picked: ['mbp', 'studio'], phase: 'idle' };
+  }
+  toggle(id) {
+    const picked = this.state.picked.includes(id)
+      ? this.state.picked.filter((v) => v !== id)
+      : this.state.picked.concat([id]);
+    this.setState({ picked: picked });
+  }
+  send() {
+    if (this.state.phase !== 'idle') return;
+    this.setState({ phase: 'sending' });
+    setTimeout(() => this.setState({ phase: 'done' }), 2300);
+    setTimeout(() => this.setState({ phase: 'idle' }), 4100);
+  }
+  renderVals() {
+    const acc = this.props.accent ?? '#74e6a0';
+    const mono = "font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace;";
+    const raw = [
+      { id: 'mbp', name: 'MacBook Pro', meta: 'ONLINE', online: true },
+      { id: 'studio', name: 'Studio', meta: 'ONLINE', online: true },
+      { id: 'thinkpad', name: 'ThinkPad', meta: 'OFFLINE', online: false }
+    ];
+    const devices = raw.map((d) => {
+      const sel = this.state.picked.includes(d.id);
+      return {
+        name: d.name,
+        meta: d.meta,
+        pick: () => this.toggle(d.id),
+        chipStyle: 'display: flex; align-items: center; gap: 9px; padding: 8px 10px; ' + mono
+          + ' font-size: 11.5px; letter-spacing: .04em; '
+          + (sel ? 'color: #eaf6ef; background: rgba(120,230,160,.09); box-shadow: inset 0 0 0 1px ' + acc + ';'
+                 : 'color: #7f9689; box-shadow: inset 0 0 0 1px rgba(120,230,160,.13);'),
+        boxStyle: 'width: 9px; height: 9px; flex-shrink: 0; '
+          + (sel ? 'background: ' + acc + ';' : 'box-shadow: inset 0 0 0 1px ' + (d.online ? acc : '#41544a') + ';'),
+        metaStyle: 'font-size: 9.5px; letter-spacing: .12em; color: ' + (d.online ? '#6d8377' : '#41544a') + ';'
+      };
+    });
+    const count = this.state.picked.length;
+    const phase = this.state.phase;
+    const sending = phase === 'sending';
+    return {
+      accent: acc,
+      devices: devices,
+      phase: phase,
+      headline: '/ ' + count + ' target' + (count === 1 ? '' : 's') + ' armed',
+      status: sending ? 'TRANSFER ACTIVE' : phase === 'done' ? 'VERIFIED' : 'IDLE · READY',
+      targetLabel: sending ? 'TRANSFERRING' : phase === 'done' ? 'VERIFIED · DELIVERED' : 'DROP TO SEND',
+      targetNote: sending ? '2 STREAMS · BLAKE3 ROLLING' : phase === 'done' ? 'CHECKSUM MATCHED ON BOTH PEERS' : 'ANYWHERE IN THIS FRAME',
+      stats: [
+        { k: 'THROUGHPUT', v: sending ? '84.2 MB/s' : '—', style: mono + ' font-size: 15px; color: ' + (sending ? acc : '#41544a') + ';' },
+        { k: 'QUEUED', v: sending ? '312 items' : '0 items', style: mono + ' font-size: 15px; color: #eaf6ef;' },
+        { k: 'PEERS ONLINE', v: '2 of 3', style: mono + ' font-size: 15px; color: #eaf6ef;' },
+        { k: 'INTEGRITY', v: 'BLAKE3', style: mono + ' font-size: 15px; color: ' + acc + ';' }
+      ],
+      arrivals: [
+        { name: 'Q3-review.pdf', size: '4.2 MB', hash: 'OK 7f2a', from: 'STUDIO' },
+        { name: 'shoot-raws/', size: '11.8 GB', hash: 'OK 19bd', from: 'MACBOOK PRO' }
+      ],
+      send: () => this.send()
+    };
+  }
+}
+</script>
+</body>
+</html>

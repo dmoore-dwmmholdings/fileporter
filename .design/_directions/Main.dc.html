@@ -1,0 +1,246 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #6ee7a8; } a:hover { color: #a7f3c8; }
+    .au * { box-sizing: border-box; }
+    .au button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+    .au-glow { position: absolute; inset: -20% -10% auto -10%; height: 70%;
+      background: radial-gradient(50% 60% at 50% 30%, var(--acc, #4ade80) 0%, transparent 70%);
+      opacity: .13; filter: blur(60px); pointer-events: none; }
+    .au-grain { position: absolute; inset: 0; pointer-events: none; opacity: .5;
+      background-image: radial-gradient(rgba(255,255,255,.045) 1px, transparent 1px);
+      background-size: 3px 3px; }
+
+    .au-nav b { position: relative; z-index: 1; }
+    .au-nav .on { background: rgba(255,255,255,.07); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+
+    /* portal */
+    .au-ring { position: absolute; inset: 0; border-radius: 50%;
+      background: conic-gradient(from 0deg, transparent 0deg, var(--acc, #4ade80) 70deg, #d9fbe7 110deg, var(--acc, #4ade80) 150deg, transparent 230deg, transparent 360deg);
+      animation: au-spin 9s linear infinite; }
+    .au-ring.blur { filter: blur(22px); opacity: .55; animation-duration: 9s; }
+    .au-ring.slow { animation: au-spin 26s linear infinite reverse; opacity: .35;
+      background: conic-gradient(from 180deg, transparent 0deg, var(--acc, #4ade80) 40deg, transparent 120deg, transparent 360deg); }
+    @keyframes au-spin { to { transform: rotate(360deg); } }
+
+    .au-dash { position: absolute; inset: -26px; border-radius: 50%;
+      border: 1px dashed rgba(255,255,255,.13); animation: au-spin 60s linear infinite; }
+
+    .au-core { position: absolute; inset: 1.5px; border-radius: 50%;
+      background: radial-gradient(70% 70% at 50% 35%, #0f1a14 0%, #080d0b 100%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06), inset 0 -30px 60px rgba(0,0,0,.6);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+      transition: transform 220ms cubic-bezier(.22,1,.36,1); }
+
+    .au-portal:hover .au-core { transform: scale(.975); }
+    .au-portal:hover .au-ring { animation-duration: 3.2s; }
+    .au-portal:active .au-core { transform: scale(.955); }
+
+    .au-mote { position: absolute; width: 3px; height: 3px; border-radius: 50%;
+      background: var(--acc, #4ade80); opacity: .7; animation: au-rise 6s ease-in-out infinite; }
+    @keyframes au-rise {
+      0%   { transform: translateY(26px) scale(.4); opacity: 0; }
+      35%  { opacity: .8; }
+      100% { transform: translateY(-64px) scale(1); opacity: 0; }
+    }
+
+    .au-enter { animation: au-in 620ms cubic-bezier(.22,1,.36,1) both; }
+    @keyframes au-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+    .au-chip { transition: transform 140ms cubic-bezier(.22,1,.36,1), background 140ms, box-shadow 140ms; }
+    .au-chip:hover { transform: translateY(-1px); }
+    .au-chip:active { transform: translateY(0) scale(.98); }
+
+    .au-card { transition: transform 180ms cubic-bezier(.22,1,.36,1), background 180ms; }
+    .au-card:hover { transform: translateY(-2px); background: rgba(255,255,255,.055); }
+    .au-act:hover { background: rgba(255,255,255,.1); }
+
+    /* phases */
+    .au-prog { transform: rotate(-90deg); opacity: 0; transition: opacity 200ms; }
+    .phase-sending .au-prog { opacity: 1; }
+    .phase-sending .au-prog circle.bar { animation: au-fill 2.2s cubic-bezier(.4,0,.2,1) forwards; }
+    @keyframes au-fill { from { stroke-dashoffset: 880; } to { stroke-dashoffset: 120; } }
+    .phase-sending .au-ring { animation-duration: 1.5s; }
+    .phase-sending .au-plus { animation: au-suck 520ms cubic-bezier(.5,0,.75,0) forwards; }
+    @keyframes au-suck { to { transform: scale(.2) translateY(6px); opacity: 0; } }
+    .phase-done .au-ring { animation-duration: 9s; }
+    .phase-done .au-check { animation: au-pop 460ms cubic-bezier(.34,1.56,.64,1) both; }
+    @keyframes au-pop { from { transform: scale(.5); opacity: 0; } to { transform: none; opacity: 1; } }
+  </style>
+</helmet>
+
+<div class="au phase-{{phase}}" style="width: 1120px; height: 760px; position: relative; overflow: hidden; background: #070b09; color: #e8f2ec; font-family: 'Space Grotesk', 'Helvetica Neue', Helvetica, Arial, sans-serif; --acc: {{accent}}">
+  <div class="au-glow"></div>
+  <div class="au-grain"></div>
+
+  <!-- header -->
+  <header style="position: relative; display: flex; align-items: center; gap: 24px; height: 60px; padding: 0 26px; border-bottom: 1px solid rgba(255,255,255,.05)">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="1.6" stroke-linecap="round">
+        <circle cx="12" cy="12" r="9"></circle><path d="M12 16V8m0 0-3.2 3.2M12 8l3.2 3.2"></path>
+      </svg>
+      <span style="font-size: 14px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase">Fileporter</span>
+    </div>
+    <nav class="au-nav" style="display: flex; gap: 2px; margin-left: 10px; padding: 3px; border-radius: 999px; background: rgba(255,255,255,.03)">
+      <button class="on" style="padding: 7px 16px; border-radius: 999px; font-size: 13px; font-weight: 500">Send</button>
+      <button style="padding: 7px 16px; border-radius: 999px; font-size: 13px; color: rgba(232,242,236,.5)">Devices</button>
+      <button style="padding: 7px 16px; border-radius: 999px; font-size: 13px; color: rgba(232,242,236,.5)">Activity</button>
+    </nav>
+    <div style="flex-grow: 1"></div>
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: rgba(232,242,236,.6)">
+      <span style="width: 6px; height: 6px; border-radius: 50%; background: {{accent}}; box-shadow: 0 0 10px {{accent}}"></span>
+      Listening · 2 online
+    </div>
+    <button aria-label="Settings" style="display: flex; padding: 8px; border-radius: 10px; color: rgba(232,242,236,.5)">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+        <circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V7a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" transform="translate(1.5 1.5) scale(.86)"></path>
+      </svg>
+    </button>
+  </header>
+
+  <!-- recipients -->
+  <section class="au-enter" style="position: relative; display: flex; align-items: center; gap: 8px; padding: 18px 26px 0">
+    <span style="font-size: 10.5px; letter-spacing: .18em; color: rgba(232,242,236,.35); margin-right: 4px">SEND TO</span>
+    <sc-for list="{{devices}}" as="d" hint-placeholder-count="3">
+      <button class="au-chip" style="{{d.chipStyle}}" onClick="{{d.pick}}">
+        <span style="{{d.dotStyle}}"></span>{{d.name}}
+      </button>
+    </sc-for>
+  </section>
+
+  <!-- centerpiece -->
+  <section style="position: relative; display: flex; flex-direction: column; align-items: center; padding-top: 34px">
+    <button class="au-portal" onClick="{{send}}" style="position: relative; width: 268px; height: 268px; border-radius: 50%">
+      <div class="au-ring blur"></div>
+      <div class="au-ring"></div>
+      <div class="au-ring slow"></div>
+      <div class="au-dash"></div>
+      <div class="au-core">
+        <svg class="au-prog" width="268" height="268" viewBox="0 0 300 300" style="position: absolute; inset: 0">
+          <circle class="bar" cx="150" cy="150" r="140" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linecap="round" stroke-dasharray="880" stroke-dashoffset="880"></circle>
+        </svg>
+        <sc-if value="{{isIdle}}" hint-placeholder-val="{{true}}">
+          <span class="au-plus" style="display: flex; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: 50%; background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+          </span>
+        </sc-if>
+        <sc-if value="{{isDone}}" hint-placeholder-val="{{false}}">
+          <span class="au-check" style="display: flex; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: 50%; background: rgba(255,255,255,.05)">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12.5 5 5L20 6.5"></path></svg>
+          </span>
+        </sc-if>
+        <span style="font-size: 12.5px; letter-spacing: .04em; color: rgba(232,242,236,.55)">{{coreLabel}}</span>
+      </div>
+      <span class="au-mote" style="left: 30%; bottom: 34%; animation-delay: 0s"></span>
+      <span class="au-mote" style="left: 62%; bottom: 30%; animation-delay: 1.4s"></span>
+      <span class="au-mote" style="left: 46%; bottom: 40%; animation-delay: 2.9s"></span>
+      <span class="au-mote" style="left: 74%; bottom: 44%; animation-delay: 4.1s"></span>
+    </button>
+
+    <h1 class="au-enter" style="margin: 30px 0 0; font-size: 33px; font-weight: 500; letter-spacing: -.02em">Drop anything.</h1>
+    <p class="au-enter" style="margin: 9px 0 0; font-size: 14px; color: rgba(232,242,236,.5)">{{subline}}</p>
+    <div class="au-enter" style="display: flex; gap: 8px; margin-top: 18px">
+      <button class="au-chip au-act" style="padding: 9px 18px; border-radius: 999px; font-size: 13px; background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,.07)">Browse files</button>
+      <button class="au-chip au-act" style="padding: 9px 18px; border-radius: 999px; font-size: 13px; background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,.07)">Browse folder</button>
+    </div>
+  </section>
+
+  <!-- arrivals -->
+  <section style="position: absolute; left: 26px; right: 26px; bottom: 22px">
+    <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px">
+      <h2 style="margin: 0; font-size: 10.5px; font-weight: 500; letter-spacing: .18em; color: rgba(232,242,236,.35)">JUST ARRIVED</h2>
+      <span style="font-size: 11.5px; color: rgba(232,242,236,.28)">from Studio · 2 min ago</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+      <sc-for list="{{arrivals}}" as="a" hint-placeholder-count="2">
+        <article class="au-card" style="display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px; border-radius: 14px; background: rgba(255,255,255,.035); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05)">
+          <span style="display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,.05); color: {{accent}}">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="{{a.icon}}"></path></svg>
+          </span>
+          <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-width: 0">
+            <strong style="font-size: 13.5px; font-weight: 500">{{a.name}}</strong>
+            <span style="font-size: 11.5px; color: rgba(232,242,236,.4)">{{a.meta}}</span>
+          </div>
+          <div style="display: flex; gap: 6px">
+            <button class="au-chip au-act" style="padding: 6px 12px; border-radius: 999px; font-size: 12px; background: rgba(255,255,255,.06)">Copy</button>
+            <button class="au-chip au-act" style="padding: 6px 12px; border-radius: 999px; font-size: 12px; background: rgba(255,255,255,.06)">Cut</button>
+          </div>
+        </article>
+      </sc-for>
+    </div>
+  </section>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#4ade80","options":["#4ade80","#34d399","#86efac","#22c55e"]},"$preview":{"width":1120,"height":760}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { picked: ['mbp', 'studio'], phase: 'idle' };
+  }
+  toggle(id) {
+    const picked = this.state.picked.includes(id)
+      ? this.state.picked.filter((v) => v !== id)
+      : this.state.picked.concat([id]);
+    this.setState({ picked: picked });
+  }
+  send() {
+    if (this.state.phase !== 'idle') return;
+    this.setState({ phase: 'sending' });
+    setTimeout(() => this.setState({ phase: 'done' }), 2300);
+    setTimeout(() => this.setState({ phase: 'idle' }), 4100);
+  }
+  renderVals() {
+    const acc = this.props.accent ?? '#4ade80';
+    const raw = [
+      { id: 'mbp', name: 'MacBook Pro', on: true },
+      { id: 'studio', name: 'Studio', on: true },
+      { id: 'thinkpad', name: 'ThinkPad', on: false }
+    ];
+    const devices = raw.map((d) => {
+      const sel = this.state.picked.includes(d.id);
+      return {
+        id: d.id,
+        name: d.name,
+        pick: () => this.toggle(d.id),
+        chipStyle: 'display: flex; align-items: center; gap: 7px; padding: 7px 15px; border-radius: 999px; font-size: 12.5px; '
+          + (sel
+            ? 'color: #071008; background: ' + acc + '; box-shadow: 0 0 18px ' + acc + '55;'
+            : 'color: rgba(232,242,236,.55); background: rgba(255,255,255,.04); box-shadow: inset 0 0 0 1px rgba(255,255,255,.07);'),
+        dotStyle: 'width: 5px; height: 5px; border-radius: 50%; background: '
+          + (sel ? 'rgba(7,16,8,.55)' : (d.on ? acc : 'rgba(232,242,236,.3)')) + ';'
+      };
+    });
+    const count = this.state.picked.length;
+    const phase = this.state.phase;
+    return {
+      accent: acc,
+      devices: devices,
+      phase: phase,
+      isIdle: phase === 'idle' || phase === 'sending',
+      isDone: phase === 'done',
+      coreLabel: phase === 'sending' ? 'Sending · 84 MB/s' : phase === 'done' ? 'Landed' : 'Drop or click',
+      subline: count === 0
+        ? 'Pick a device above to send.'
+        : 'It lands on ' + count + ' device' + (count === 1 ? '' : 's') + ' in seconds.',
+      arrivals: [
+        { name: 'Q3-review.pdf', meta: 'PDF · 4.2 MB · from Studio', icon: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5' },
+        { name: 'shoot-raws', meta: 'Folder · 312 items · from MacBook Pro', icon: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' }
+      ],
+      send: () => this.send()
+    };
+  }
+}
+</script>
+</body>
+</html>

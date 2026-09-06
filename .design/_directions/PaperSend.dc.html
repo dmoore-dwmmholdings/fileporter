@@ -1,0 +1,206 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Libre+Franklin:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #1f6a45; } a:hover { color: #14512f; }
+    .pa * { box-sizing: border-box; }
+    .pa button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+    .pa input { font: inherit; color: inherit; }
+
+    .pa-tex { position: absolute; inset: 0; pointer-events: none; opacity: .55;
+      background-image: radial-gradient(rgba(31,43,33,.055) .8px, transparent .8px); background-size: 4px 4px; }
+
+    .pa-link { position: relative; padding-bottom: 3px; }
+    .pa-link::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+      background: #1f6a45; transform: scaleX(0); transform-origin: left;
+      transition: transform 220ms cubic-bezier(.22,1,.36,1); }
+    .pa-link:hover::after, .pa-link.on::after { transform: scaleX(1); }
+
+    /* the plate */
+    .pa-plate { position: relative; transition: box-shadow 260ms cubic-bezier(.22,1,.36,1), transform 260ms cubic-bezier(.22,1,.36,1); }
+    .pa-plate:hover { transform: translateY(-2px); box-shadow: 0 18px 40px rgba(31,43,33,.09), inset 0 0 0 1px #cfd3c3; }
+    .pa-plate:active { transform: translateY(0); }
+    .pa-tick { position: absolute; width: 15px; height: 15px; transition: all 300ms cubic-bezier(.22,1,.36,1); }
+    .pa-plate:hover .pa-tick { width: 24px; height: 24px; }
+    .pa-wash { position: absolute; inset: 0; opacity: 0; background: rgba(31,106,69,.045);
+      transition: opacity 260ms ease; }
+    .pa-plate:hover .pa-wash { opacity: 1; }
+    .pa-fold { transition: transform 320ms cubic-bezier(.22,1,.36,1), opacity 260ms; }
+    .pa-plate:hover .pa-fold { transform: translateY(-3px) rotate(-1.2deg); }
+
+    .pa-rise { animation: pa-rise 700ms cubic-bezier(.22,1,.36,1) both; }
+    @keyframes pa-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+    .pa-rule { transform-origin: left; animation: pa-rule 900ms cubic-bezier(.22,1,.36,1) both; }
+    @keyframes pa-rule { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+    .pa-chip { transition: background 160ms, color 160ms, box-shadow 160ms; }
+    .pa-chip:hover { box-shadow: inset 0 0 0 1px #1f6a45; }
+    .pa-row { transition: background 180ms; }
+    .pa-row:hover { background: #f2f2e8; }
+    .pa-btn { transition: background 160ms, color 160ms; }
+    .pa-btn:hover { background: #1f6a45; color: #fbfaf3; }
+
+    .phase-sending .pa-meter i { animation: pa-meter 2.2s cubic-bezier(.4,0,.2,1) forwards; }
+    @keyframes pa-meter { from { width: 0; } to { width: 76%; } }
+    .pa-meter { opacity: 0; transition: opacity 200ms; }
+    .phase-sending .pa-meter, .phase-done .pa-meter { opacity: 1; }
+    .phase-done .pa-meter i { width: 100%; }
+  </style>
+</helmet>
+
+<div class="pa phase-{{phase}}" style="width: 1120px; height: 760px; position: relative; overflow: hidden; background: #fbfaf3; color: #1c2b21; font-family: 'Libre Franklin', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <div class="pa-tex"></div>
+
+  <header style="position: relative; display: flex; align-items: baseline; gap: 28px; padding: 26px 42px 0">
+    <span style="font-family: 'Instrument Serif', Georgia, 'Times New Roman', serif; font-size: 23px; letter-spacing: -.01em">Fileporter</span>
+    <nav style="display: flex; gap: 22px; font-size: 13px">
+      <button class="pa-link on" style="font-weight: 500">Send</button>
+      <button class="pa-link" style="color: #6d7a6d">Devices</button>
+      <button class="pa-link" style="color: #6d7a6d">Activity</button>
+    </nav>
+    <div style="flex-grow: 1"></div>
+    <span style="font-size: 10.5px; letter-spacing: .16em; color: #6d7a6d">LISTENING · 2 ONLINE</span>
+    <button class="pa-link" style="font-size: 10.5px; letter-spacing: .16em; color: #6d7a6d">SETTINGS</button>
+  </header>
+  <div class="pa-rule" style="position: relative; height: 1px; margin: 16px 42px 0; background: #1c2b21; opacity: .18"></div>
+
+  <div style="position: relative; display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 44px; padding: 28px 42px 0">
+
+    <!-- left column: masthead + recipients -->
+    <section class="pa-rise" style="display: flex; flex-direction: column; gap: 22px">
+      <h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 60px; line-height: .96; font-weight: 400; letter-spacing: -.025em; text-wrap: pretty">Hand it<br /><em style="color: #1f6a45">across</em><br />the room.</h1>
+      <p style="margin: 0; font-size: 13.5px; line-height: 1.6; color: #4b5b4d; max-width: 32ch">{{subline}}</p>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px">
+        <span style="font-size: 10.5px; letter-spacing: .18em; color: #8a9489">SEND TO</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 7px">
+          <sc-for list="{{devices}}" as="d" hint-placeholder-count="3">
+            <button class="pa-chip" style="{{d.chipStyle}}" onClick="{{d.pick}}">
+              <span style="{{d.dotStyle}}"></span>{{d.name}}
+            </button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="height: 1px; background: #1c2b21; opacity: .12"></div>
+      <div style="display: flex; flex-direction: column; gap: 9px">
+        <span style="font-size: 10.5px; letter-spacing: .18em; color: #8a9489">JUST ARRIVED</span>
+        <sc-for list="{{arrivals}}" as="a" hint-placeholder-count="2">
+          <article class="pa-row" style="display: flex; align-items: center; gap: 11px; margin: 0 -8px; padding: 9px 8px; border-radius: 4px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1f6a45" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="{{a.icon}}"></path></svg>
+            <div style="display: flex; flex-direction: column; gap: 1px; flex-grow: 1; min-width: 0">
+              <strong style="font-size: 13px; font-weight: 500">{{a.name}}</strong>
+              <span style="font-size: 11px; color: #8a9489">{{a.meta}}</span>
+            </div>
+            <div style="display: flex; gap: 4px">
+              <button class="pa-btn" style="padding: 4px 9px; border-radius: 3px; font-size: 11px; box-shadow: inset 0 0 0 1px #d3d7c8">Copy</button>
+              <button class="pa-btn" style="padding: 4px 9px; border-radius: 3px; font-size: 11px; box-shadow: inset 0 0 0 1px #d3d7c8">Cut</button>
+            </div>
+          </article>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- right: the plate -->
+    <section class="pa-rise" style="display: flex; flex-direction: column; gap: 14px">
+      <button class="pa-plate" onClick="{{send}}" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; height: 466px; border-radius: 3px; background: #fffef8; box-shadow: 0 1px 0 rgba(31,43,33,.05), inset 0 0 0 1px #e2e4d7">
+        <div class="pa-wash"></div>
+        <span class="pa-tick" style="top: 14px; left: 14px; border-top: 1px solid #1f6a45; border-left: 1px solid #1f6a45"></span>
+        <span class="pa-tick" style="top: 14px; right: 14px; border-top: 1px solid #1f6a45; border-right: 1px solid #1f6a45"></span>
+        <span class="pa-tick" style="bottom: 14px; left: 14px; border-bottom: 1px solid #1f6a45; border-left: 1px solid #1f6a45"></span>
+        <span class="pa-tick" style="bottom: 14px; right: 14px; border-bottom: 1px solid #1f6a45; border-right: 1px solid #1f6a45"></span>
+
+        <svg class="pa-fold" width="132" height="96" viewBox="0 0 132 96" fill="none" style="position: relative">
+          <rect x="8" y="16" width="116" height="76" rx="2" fill="#fbfaf1" stroke="#c9cebb"></rect>
+          <path d="M8 20 66 60 124 20" stroke="#1f6a45" stroke-width="1.2" fill="none"></path>
+          <path d="M66 4v34m0 0-9-9m9 9 9-9" stroke="#1f6a45" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+
+        <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 7px">
+          <span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 30px; letter-spacing: -.01em">{{plateTitle}}</span>
+          <span style="font-size: 12px; letter-spacing: .04em; color: #8a9489">{{plateNote}}</span>
+        </div>
+
+        <div class="pa-meter" style="position: relative; width: 260px; height: 2px; background: #e6e8da">
+          <i style="display: block; height: 2px; width: 0; background: #1f6a45"></i>
+        </div>
+
+        <div style="position: relative; display: flex; gap: 8px">
+          <span class="pa-chip" style="padding: 7px 15px; border-radius: 3px; font-size: 12px; box-shadow: inset 0 0 0 1px #d3d7c8">Browse files</span>
+          <span class="pa-chip" style="padding: 7px 15px; border-radius: 3px; font-size: 12px; box-shadow: inset 0 0 0 1px #d3d7c8">Browse folder</span>
+        </div>
+      </button>
+      <p style="margin: 0; font-size: 11px; letter-spacing: .1em; color: #a2ab9f; text-align: center">ENCRYPTED · VERIFIED WITH BLAKE3 · NEVER LEAVES THIS NETWORK</p>
+    </section>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#1f6a45","options":["#1f6a45","#2f7d55","#14512f","#3d6b4a"]},"$preview":{"width":1120,"height":760}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { picked: ['mbp', 'studio'], phase: 'idle' };
+  }
+  toggle(id) {
+    const picked = this.state.picked.includes(id)
+      ? this.state.picked.filter((v) => v !== id)
+      : this.state.picked.concat([id]);
+    this.setState({ picked: picked });
+  }
+  send() {
+    if (this.state.phase !== 'idle') return;
+    this.setState({ phase: 'sending' });
+    setTimeout(() => this.setState({ phase: 'done' }), 2300);
+    setTimeout(() => this.setState({ phase: 'idle' }), 4100);
+  }
+  renderVals() {
+    const acc = this.props.accent ?? '#1f6a45';
+    const raw = [
+      { id: 'mbp', name: 'MacBook Pro', online: true },
+      { id: 'studio', name: 'Studio', online: true },
+      { id: 'thinkpad', name: 'ThinkPad', online: false }
+    ];
+    const devices = raw.map((d) => {
+      const sel = this.state.picked.includes(d.id);
+      return {
+        name: d.name,
+        pick: () => this.toggle(d.id),
+        chipStyle: 'display: flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 3px; font-size: 12.5px; '
+          + (sel
+            ? 'color: #fbfaf3; background: ' + acc + '; box-shadow: inset 0 0 0 1px ' + acc + ';'
+            : 'color: #4b5b4d; background: transparent; box-shadow: inset 0 0 0 1px #d3d7c8;'),
+        dotStyle: 'width: 5px; height: 5px; border-radius: 50%; background: '
+          + (sel ? 'rgba(251,250,243,.75)' : (d.online ? acc : '#b8bfb2')) + ';'
+      };
+    });
+    const count = this.state.picked.length;
+    const phase = this.state.phase;
+    return {
+      devices: devices,
+      phase: phase,
+      plateTitle: phase === 'sending' ? 'Sending' : phase === 'done' ? 'Delivered' : 'Drop it here',
+      plateNote: phase === 'sending' ? '84 MB/s · verifying as it goes' : phase === 'done' ? 'Two devices confirmed receipt' : 'or use a button below',
+      subline: count === 0
+        ? 'Choose a device on the left and everything you drop goes straight to it.'
+        : 'Anything you drop on this page travels straight to ' + count + ' trusted device' + (count === 1 ? '' : 's') + ' on your own network. No cloud, no account, no waiting.',
+      arrivals: [
+        { name: 'Q3-review.pdf', meta: 'PDF · 4.2 MB · from Studio', icon: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5' },
+        { name: 'shoot-raws', meta: 'Folder · 312 items · from MacBook Pro', icon: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' }
+      ],
+      send: () => this.send()
+    };
+  }
+}
+</script>
+</body>
+</html>

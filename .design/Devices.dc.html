@@ -1,0 +1,171 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #74e6a0; } a:hover { color: #a8f5c6; }
+    .q * { box-sizing: border-box; }
+    .q button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+    .q input { font: inherit; color: inherit; }
+    .mono { font-family: 'IBM Plex Mono', ui-monospace, Menlo, monospace; }
+
+    .nav { position: relative; font-size: 13px; color: #7f9689; padding-bottom: 3px; transition: color 160ms; }
+    .nav:hover { color: #d6e5db; }
+    .nav.on { color: #eaf6ef; }
+    .nav.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--acc, #74e6a0); }
+
+    .q-floor { position: absolute; left: 0; right: 0; bottom: 0; height: 260px; pointer-events: none;
+      background: radial-gradient(64% 100% at 50% 128%, rgba(120,230,160,.11), transparent 72%); }
+
+    .tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 6px 8px 0; transition: transform 220ms cubic-bezier(.22,1,.36,1); }
+    .tile:hover { transform: translateY(-3px); }
+    .m-seg { opacity: .16; }
+    .m-segs .ms0 { animation: msf 1.9s steps(1,end) infinite; }
+    .m-segs .ms1 { animation: msf 1.9s steps(1,end) infinite .32s; }
+    .m-segs .ms2 { animation: msf 1.9s steps(1,end) infinite .64s; }
+    .m-segs .ms3 { animation: msf 1.9s steps(1,end) infinite .96s; }
+    .m-segs .ms4 { animation: msf 1.9s steps(1,end) infinite 1.28s; }
+    .m-segs .ms5 { animation: msf 1.9s steps(1,end) infinite 1.6s; }
+    @keyframes msf { 0% { opacity: .85; } 24%, 100% { opacity: .14; } }
+    .m-node { animation: blink 1.6s steps(1,end) infinite; }
+    .m-node.mn1 { animation-delay: .26s; } .m-node.mn2 { animation-delay: .52s; }
+    .m-node.mn3 { animation-delay: .78s; } .m-node.mn4 { animation-delay: 1.04s; }
+    .m-node.mn5 { animation-delay: 1.3s; }
+    @keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+    .m-core { animation: breathe 3.9s ease-in-out infinite; }
+    @keyframes breathe { 0%, 100% { opacity: .55; } 50% { opacity: .85; } }
+    .tile:hover .m-core { animation-duration: 1.4s; }
+    .m-pool { opacity: .6; }
+    .dark svg { opacity: .38; }
+    .dark .m-seg, .dark .m-node { animation: none; opacity: .1; }
+    .dark .m-core { animation: none; opacity: .2; }
+
+    .beacon { animation: beacon 2.4s ease-in-out infinite; }
+    @keyframes beacon { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+    .row { transition: background 180ms; }
+    .row:hover { background: rgba(120,230,160,.04); }
+    .act { opacity: .4; transition: opacity 160ms; }
+    .row:hover .act { opacity: 1; }
+    .chip { transition: color 160ms, box-shadow 160ms; }
+    .chip:hover { box-shadow: inset 0 0 0 1px rgba(120,230,160,.5); color: #d6e5db; }
+    .field { border: 0; border-bottom: 1px solid rgba(120,230,160,.24); background: none; outline: none;
+      transition: border-color 200ms; }
+    .field:focus { border-color: var(--acc, #74e6a0); }
+    .fade { animation: fade 600ms ease both; }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  </style>
+</helmet>
+
+<div class="q" style="width: 1120px; height: 760px; position: relative; overflow: hidden; background: #0a100d; color: #eaf6ef; font-family: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; --acc: {{accent}}">
+  <span class="q-floor"></span>
+
+  <header style="position: relative; z-index: 4; display: flex; align-items: center; gap: 26px; padding: 22px 28px">
+    <span style="display: flex; align-items: center; gap: 9px">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="{{accent}}" stroke-width="1.2">
+        <ellipse cx="10" cy="15" rx="8" ry="3"></ellipse><path d="M10 12V2m0 0L6.5 5.5M10 2l3.5 3.5"></path>
+      </svg>
+      <span style="font-size: 13px; font-weight: 500; letter-spacing: -.01em">Fileporter</span>
+    </span>
+    <nav style="display: flex; gap: 20px">
+      <button class="nav" type="button">Transport</button>
+      <button class="nav on" type="button">Pads</button>
+      <button class="nav" type="button">Log</button>
+      <button class="nav" type="button">Config</button>
+    </nav>
+    <div style="flex-grow: 1"></div>
+    <span style="display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: #8aa398">
+      Workshop iMac
+      <span style="width: 1px; height: 11px; background: rgba(120,230,160,.24)"></span>
+      <span style="width: 5px; height: 5px; border-radius: 50%; background: {{accent}}"></span>2 of 3 linked
+    </span>
+  </header>
+
+  <div style="position: absolute; left: 0; right: 0; top: 92px; bottom: 104px; display: flex; flex-direction: column; justify-content: center; gap: 46px">
+  <div class="fade" style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 11px">
+    <h1 style="margin: 0; font-size: 44px; font-weight: 300; letter-spacing: -.032em">Your pads.</h1>
+    <p style="margin: 0; font-size: 14.5px; font-weight: 300; color: #8aa398; max-width: 60ch; text-align: center">Each one proves its own identity before a link is kept. A pad that goes dark holds your pattern until it wakes.</p>
+  </div>
+
+  <div class="fade" style="position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px; padding: 0 84px">
+    <sc-for list="{{pads}}" as="p" hint-placeholder-count="3">
+      <div class="{{p.cls}}">
+        <svg width="100%" height="104" viewBox="0 0 240 86" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="mdeck" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="{{accent}}" stop-opacity=".26"/><stop offset="55%" stop-color="{{accent}}" stop-opacity=".09"/><stop offset="100%" stop-color="{{accent}}" stop-opacity=".03"/></linearGradient><linearGradient id="mrim" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="{{accent}}" stop-opacity=".40"/><stop offset="100%" stop-color="{{accent}}" stop-opacity=".05"/></linearGradient><radialGradient id="mcore" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#e8fff2" stop-opacity=".85"/><stop offset="26%" stop-color="{{accent}}" stop-opacity=".5"/><stop offset="100%" stop-color="{{accent}}" stop-opacity="0"/></radialGradient><radialGradient id="mpool" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="{{accent}}" stop-opacity=".2"/><stop offset="100%" stop-color="{{accent}}" stop-opacity="0"/></radialGradient></defs><ellipse class="m-pool" cx="120" cy="48" rx="132" ry="34" fill="url(#mpool)"/><path d="M12 44 A108 24 0 0 0 228 44 L228 55 A108 24 0 0 1 12 55 Z" fill="url(#mrim)"/><path d="M12.0 44.0 L12.0 55.0 M14.0 39.4 L14.0 50.4 M19.9 35.0 L19.9 46.0 M29.4 30.9 L29.4 41.9 M42.3 27.3 L42.3 38.3 M58.1 24.3 L58.1 35.3 M76.1 22.1 L76.1 33.1 M95.7 20.6 L95.7 31.6 M116.2 20.0 L116.2 31.0 M136.9 20.3 L136.9 31.3 M156.9 21.4 L156.9 32.4 M175.6 23.4 L175.6 34.4 M192.3 26.2 L192.3 37.2 M206.3 29.6 L206.3 40.6 M217.1 33.5 L217.1 44.5 M224.3 37.8 L224.3 48.8 M227.7 42.3 L227.7 53.3" stroke="{{accent}}" stroke-width=".7" opacity=".24" fill="none"/><path d="M12 44 A108 24 0 0 0 228 44" fill="none" stroke="{{accent}}" stroke-width="1.5" opacity=".95"/><path d="M12 55 A108 24 0 0 0 228 55" fill="none" stroke="{{accent}}" stroke-width=".9" opacity=".3"/><ellipse cx="120" cy="44" rx="108" ry="24" fill="url(#mdeck)"/><path d="M222.0 44.0 L166.0 44.0 M208.3 55.2 L159.8 49.0 M171.0 63.5 L143.0 52.7 M120.0 66.5 L120.0 54.0 M69.0 63.5 L97.0 52.7 M31.7 55.2 L80.2 49.0 M18.0 44.0 L74.0 44.0 M31.7 32.8 L80.2 39.0 M69.0 24.5 L97.0 35.3 M120.0 21.5 L120.0 34.0 M171.0 24.5 L143.0 35.3 M208.3 32.7 L159.8 39.0" stroke="{{accent}}" stroke-width=".8" opacity=".14" fill="none"/><path class="m-seg ms0" d="M218.8 45.2 A99 22 0 0 1 208.4 53.9" fill="none" stroke="{{accent}}" stroke-width="1.4"/><path class="m-seg ms1" d="M202.8 56.0 A99 22 0 0 1 174.2 62.4" fill="none" stroke="{{accent}}" stroke-width="1.4"/><path class="m-seg ms2" d="M164.6 63.6 A99 22 0 0 1 125.5 66.0" fill="none" stroke="{{accent}}" stroke-width="1.4"/><path class="m-seg ms3" d="M114.5 66.0 A99 22 0 0 1 75.4 63.6" fill="none" stroke="{{accent}}" stroke-width="1.4"/><path class="m-seg ms4" d="M65.8 62.4 A99 22 0 0 1 37.2 56.0" fill="none" stroke="{{accent}}" stroke-width="1.4"/><path class="m-seg ms5" d="M31.6 53.9 A99 22 0 0 1 21.2 45.2" fill="none" stroke="{{accent}}" stroke-width="1.4"/><path class="m-seg ms0" d="M21.2 42.8 A99 22 0 0 1 31.6 34.1" fill="none" stroke="{{accent}}" stroke-width="1.4"/><path class="m-seg ms1" d="M37.2 32.0 A99 22 0 0 1 65.8 25.6" fill="none" stroke="{{accent}}" stroke-width="1.4"/><path class="m-seg ms2" d="M75.4 24.4 A99 22 0 0 1 114.5 22.0" fill="none" stroke="{{accent}}" stroke-width="1.4"/><path class="m-seg ms3" d="M125.5 22.0 A99 22 0 0 1 164.6 24.4" fill="none" stroke="{{accent}}" stroke-width="1.4"/><path class="m-seg ms4" d="M174.2 25.6 A99 22 0 0 1 202.8 32.0" fill="none" stroke="{{accent}}" stroke-width="1.4"/><path class="m-seg ms5" d="M208.4 34.1 A99 22 0 0 1 218.8 42.8" fill="none" stroke="{{accent}}" stroke-width="1.4"/><ellipse cx="120" cy="44" rx="102" ry="22.5" fill="none" stroke="{{accent}}" stroke-width=".9" opacity="0.40"/><ellipse cx="120" cy="44" rx="78" ry="17" fill="none" stroke="{{accent}}" stroke-width=".9" opacity="0.16"/><ellipse cx="120" cy="44" rx="46" ry="10" fill="none" stroke="{{accent}}" stroke-width=".9" opacity="0.30"/><ellipse class="m-core" cx="120" cy="44" rx="46" ry="10" fill="url(#mcore)"/><rect x="209.5" y="53.5" width="8" height="5" fill="#081009" stroke="{{accent}}" stroke-width=".7" opacity=".75"/><circle class="m-node mn0" cx="213.5" cy="56.0" r="1.5" fill="{{accent}}"/><rect x="116.0" y="65.5" width="8" height="5" fill="#081009" stroke="{{accent}}" stroke-width=".7" opacity=".75"/><circle class="m-node mn1" cx="120.0" cy="68.0" r="1.5" fill="{{accent}}"/><rect x="22.5" y="53.5" width="8" height="5" fill="#081009" stroke="{{accent}}" stroke-width=".7" opacity=".75"/><circle class="m-node mn2" cx="26.5" cy="56.0" r="1.5" fill="{{accent}}"/><rect x="22.5" y="29.5" width="8" height="5" fill="#081009" stroke="{{accent}}" stroke-width=".7" opacity=".75"/><circle class="m-node mn3" cx="26.5" cy="32.0" r="1.5" fill="{{accent}}"/><rect x="116.0" y="17.5" width="8" height="5" fill="#081009" stroke="{{accent}}" stroke-width=".7" opacity=".75"/><circle class="m-node mn4" cx="120.0" cy="20.0" r="1.5" fill="{{accent}}"/><rect x="209.5" y="29.5" width="8" height="5" fill="#081009" stroke="{{accent}}" stroke-width=".7" opacity=".75"/><circle class="m-node mn5" cx="213.5" cy="32.0" r="1.5" fill="{{accent}}"/></svg>
+        <strong style="font-size: 16px; font-weight: 400; letter-spacing: -.01em; margin-top: 6px">{{p.name}}</strong>
+        <span style="{{p.stateStyle}}">{{p.state}}</span>
+        <span class="mono" style="font-size: 10.5px; color: #6f8579; margin-top: 3px">{{p.fp}}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div class="fade" style="position: relative; display: flex; flex-direction: column; gap: 2px; padding: 0 90px">
+    <div class="row" style="display: flex; align-items: center; gap: 12px; padding: 11px 12px; margin: 0 -12px">
+      <span class="beacon" style="width: 6px; height: 6px; border-radius: 50%; background: {{accent}}"></span>
+      <span style="font-size: 14px">Kitchen mini</span>
+      <span class="mono" style="font-size: 12px; color: #8aa398">192.168.1.42:48721</span>
+      <div style="flex-grow: 1"></div>
+      <span style="font-size: 12.5px; color: {{accent}}">proving identity…</span>
+    </div>
+    <sc-for list="{{held}}" as="h" hint-placeholder-count="2">
+      <div class="row" style="display: flex; align-items: center; gap: 12px; padding: 11px 12px; margin: 0 -12px">
+        <span style="width: 6px; height: 6px; border-radius: 50%; box-shadow: inset 0 0 0 1px #6f8579"></span>
+        <span class="mono" style="font-size: 13px; color: #d6e5db">{{h.label}}</span>
+        <span class="mono" style="font-size: 12px; color: #8aa398">{{h.size}}</span>
+        <div style="flex-grow: 1"></div>
+        <span style="font-size: 12.5px; color: #8aa398">held for {{h.pad}}</span>
+        <span class="act"><span class="chip mono" style="padding: 3px 10px; font-size: 10.5px; color: #8aa398; box-shadow: inset 0 0 0 1px rgba(120,230,160,.22)">DISCARD</span></span>
+      </div>
+    </sc-for>
+  </div>
+
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; gap: 16px; padding: 0 28px 26px">
+    <label style="display: flex; flex-direction: column; gap: 7px">
+      <span style="font-size: 12px; color: #8aa398">Add a pad by address</span>
+      <span style="display: flex; align-items: baseline; gap: 10px">
+        <input class="field mono" value="192.168.1.24:48721" style="width: 208px; padding: 4px 0; font-size: 13px; color: #eaf6ef" />
+        <button class="chip" type="button" style="padding: 5px 14px; border-radius: 999px; font-size: 12.5px; color: #8aa398; box-shadow: inset 0 0 0 1px rgba(120,230,160,.24)">Add</button>
+      </span>
+    </label>
+    <div style="flex-grow: 1"></div>
+    <span style="font-size: 12px; color: #8aa398">A revoked pad stays revoked · it cannot quietly relink</span>
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#74e6a0","options":["#74e6a0","#5ddc8f","#9cf5bd","#3fcf7c"]},"$preview":{"width":1120,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const acc = this.props.accent ?? '#74e6a0';
+    const raw = [
+      { name: 'MacBook Pro', online: true, state: 'Linked · beam ready', fp: '7F2A · C41E' },
+      { name: 'Studio', online: true, state: 'Linked · wired, fastest', fp: '19BD · 08A6' },
+      { name: 'ThinkPad', online: false, state: 'Dark · last echo 19h ago', fp: 'D3C0 · 5511' }
+    ];
+    return {
+      accent: acc,
+      pads: raw.map((p) => ({
+        name: p.name,
+        state: p.state,
+        fp: p.fp,
+        cls: p.online ? 'tile' : 'tile dark',
+        stateStyle: 'font-size: 12.5px; color: ' + (p.online ? '#8aa398' : '#6f8579') + ';'
+      })),
+      held: [
+        { label: 'invoices-2026-q3/', size: '84 items', pad: 'ThinkPad' },
+        { label: 'backup-keys.tar.gz', size: '1.4 GB', pad: 'ThinkPad' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
