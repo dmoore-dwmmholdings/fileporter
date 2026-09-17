@@ -184,8 +184,8 @@ a:hover { color: #a8f5c6; }
 .chip-mini:disabled { opacity: 0.4; }
 .chip-mini.danger:hover:not(:disabled) { color: var(--danger); box-shadow: inset 0 0 0 1px rgba(232, 144, 127, 0.5); }
 
-/* A row reveals its actions on hover, and always on keyboard focus. */
-.act { opacity: 0.4; transition: opacity 160ms; }
+/* Keep enabled row actions readable without requiring hover or focus. */
+.act { opacity: 1; }
 .row:hover .act, .row:focus-within .act, .det:hover .act, .det:focus-within .act { opacity: 1; }
 
 .row { transition: background 160ms; }

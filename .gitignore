@@ -58,3 +58,6 @@ Thumbs.db
 # Design-process screenshots. The design package itself (artboards, canvas.json,
 # the directions page) is tracked; these are superseded iteration captures.
 .design/_shots/
+
+# Docwalk local capture sessions
+.docwalk/

@@ -78,6 +78,12 @@ it('keeps confirmation disabled until the backend supplies a matching code', asy
   await openPads();
   expect(await screen.findByRole('button', { name: 'Confirm link' })).toBeDisabled();
   expect(screen.getByRole('status')).toHaveTextContent('Waiting for a matching code');
+  const reject = screen.getByRole('button', { name: 'Reject' });
+  expect(reject).toHaveFocus();
+  fireEvent.keyDown(reject, { key: 'Tab' });
+  expect(reject).toHaveFocus();
+  fireEvent.keyDown(reject, { key: 'Tab', shiftKey: true });
+  expect(reject).toHaveFocus();
 });
 
 it('adds a pad at the exact address typed, and reports failure accessibly', async () => {
@@ -100,6 +106,19 @@ it('renames a linked pad locally by its stored device id', async () => {
   fireEvent.change(screen.getByLabelText('Local name for Laptop'), { target: { value: 'Office laptop' } });
   fireEvent.click(screen.getByRole('button', { name: 'SAVE' }));
   await waitFor(() => expect(rename).toHaveBeenCalledWith('device-1', 'Office laptop'));
+});
+
+it('returns focus to Rename when an edit is cancelled without saving', async () => {
+  vi.spyOn(appBridge, 'getAppSnapshot').mockResolvedValue({ ...base, pairing: { ...base.pairing, trustedDevices: [laptop] } });
+  const rename = vi.spyOn(appBridge, 'renameTrustedDevice');
+  render(<App />);
+  await openPads();
+  fireEvent.click(screen.getByRole('button', { name: 'RENAME' }));
+  const input = screen.getByRole('textbox', { name: 'Local name for Laptop' });
+  expect(input).toHaveFocus();
+  fireEvent.keyDown(input, { key: 'Escape' });
+  expect(screen.getByRole('button', { name: 'RENAME' })).toHaveFocus();
+  expect(rename).not.toHaveBeenCalled();
 });
 
 it('discards a pattern held for a dark pad by its batch id', async () => {
