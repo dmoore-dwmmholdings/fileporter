@@ -53,7 +53,13 @@ export function PadsView({ snapshot }: { snapshot: AppSnapshotViewModel }) {
 function Tile({ device, onError }: { device: TrustedDeviceViewModel; onError: (message: string | null) => void }) {
   const [editing, setEditing] = useState(false);
   const [alias, setAlias] = useState(device.name);
+  const renameRef = useRef<HTMLButtonElement>(null);
+  const wasEditing = useRef(false);
   const linked = device.state === 'online';
+  useEffect(() => {
+    if (wasEditing.current && !editing) renameRef.current?.focus();
+    wasEditing.current = editing;
+  }, [editing]);
 
   async function rename() {
     const next = alias.trim();
@@ -89,7 +95,7 @@ function Tile({ device, onError }: { device: TrustedDeviceViewModel; onError: (m
       <span className="fp">{device.certificateFingerprintShort}</span>
       {!editing && (
         <span className="act" style={{ marginTop: 6 }}>
-          <button type="button" className="chip-mini" onClick={() => { setAlias(device.name); setEditing(true); }}>RENAME</button>
+          <button ref={renameRef} type="button" className="chip-mini" onClick={() => { setAlias(device.name); setEditing(true); }}>RENAME</button>
         </span>
       )}
     </div>
@@ -122,7 +128,12 @@ function PendingRow({ pairing }: { pairing: PendingPairing }) {
   const [error, setError] = useState<string | null>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const rejectRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
   const canConfirm = Boolean(pairing.sasCode);
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    return () => { if (previous?.isConnected) previous.focus(); };
+  }, []);
   useEffect(() => { (canConfirm ? confirmRef : rejectRef).current?.focus(); }, [canConfirm]);
 
   async function respond(accept: boolean) {
@@ -134,7 +145,19 @@ function PendingRow({ pairing }: { pairing: PendingPairing }) {
 
   return (
     <div className="modal-backdrop" role="presentation">
-      <section className="pairing-modal" role="dialog" aria-modal="true" aria-labelledby={`pairing-${pairing.id}`} aria-describedby={`pairing-help-${pairing.id}`}>
+      <section
+        ref={dialogRef} tabIndex={-1}
+        className="pairing-modal" role="dialog" aria-modal="true" aria-labelledby={`pairing-${pairing.id}`} aria-describedby={`pairing-help-${pairing.id}`}
+        onKeyDown={(event) => {
+          if (event.key !== 'Tab') return;
+          const buttons = [rejectRef.current, confirmRef.current].filter((button): button is HTMLButtonElement => Boolean(button && !button.disabled));
+          const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+          event.preventDefault();
+          if (!buttons.length) { dialogRef.current?.focus(); return; }
+          const next = (index + (event.shiftKey ? buttons.length - 1 : 1)) % buttons.length;
+          buttons[next]?.focus();
+        }}
+      >
         <h2 id={`pairing-${pairing.id}`}>Confirm {pairing.remoteName}</h2>
         <p id={`pairing-help-${pairing.id}`}>
           Compare this code with the one on {pairing.remoteName}. Confirm only when both pads show the same code.
@@ -189,10 +212,11 @@ function AddPad({ onError }: { onError: (message: string | null) => void }) {
   }
   return (
     <div className="q-foot align-end">
-      <label className="add-pad">
-        <span className="lbl">Add a pad by address</span>
+      <div className="add-pad">
+        <label className="lbl" htmlFor="pad-endpoint">Add a pad by address</label>
         <span className="entry">
           <input
+            id="pad-endpoint"
             className="field mono"
             value={endpoint}
             placeholder="192.168.1.24:48721"
@@ -202,7 +226,7 @@ function AddPad({ onError }: { onError: (message: string | null) => void }) {
           />
           <button type="button" className="chip" disabled={busy} onClick={() => { void add(); }}>{busy ? 'Adding…' : 'Add'}</button>
         </span>
-      </label>
+      </div>
       <div className="q-spacer" />
       <span className="foot-detail">A revoked pad stays revoked · it cannot quietly relink</span>
     </div>

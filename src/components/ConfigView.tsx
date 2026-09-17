@@ -93,14 +93,14 @@ export function ConfigView({ snapshot, onSnapshot }: { snapshot: AppSnapshotView
               </span>
             </label>
 
-            <label className="cfg-field">
-              <span className="lbl">Where arrivals land</span>
+            <div className="cfg-field">
+              <label className="lbl" htmlFor="receive-directory">Where arrivals land</label>
               <span className="entry">
-                <input className="field mono" style={{ fontSize: 13.5 }} value={receiveDirectory} readOnly aria-label="Where arrivals land" />
+                <input id="receive-directory" className="field mono" style={{ fontSize: 13.5 }} value={receiveDirectory} readOnly aria-describedby="receive-directory-help" />
                 <button type="button" className="chip" disabled={saving} onClick={() => { void choose(); }}>Choose</button>
               </span>
-              <span className="hint">Nothing is ever overwritten. A name that already exists lands beside it, numbered.</span>
-            </label>
+              <span className="hint" id="receive-directory-help">Nothing is ever overwritten. A name that already exists lands beside it, numbered.</span>
+            </div>
 
             <label className="cfg-field">
               <span className="lbl">Preferred listen address</span>
@@ -110,10 +110,11 @@ export function ConfigView({ snapshot, onSnapshot }: { snapshot: AppSnapshotView
                 value={listenAddress}
                 aria-label="Preferred listen address"
                 aria-invalid={!validListenAddress}
+                aria-describedby="listen-address-help"
                 placeholder="0.0.0.0:48721"
                 onChange={(event) => setListenAddress(event.target.value)}
               />
-              <span className="hint">Loopback or private ranges only. Port 0 lets the system choose.</span>
+              <span className="hint" id="listen-address-help">Loopback or private ranges only. Port 0 lets the system choose.</span>
             </label>
 
             <div className="cfg-field">
@@ -187,7 +188,7 @@ function shortId(id: string): string {
 
 function Diagnostics({ snapshot }: { snapshot: AppSnapshotViewModel }) {
   return (
-    <div className="diag fade">
+    <div className="diag-group fade">
       <details className="diag">
         <summary>Network diagnostics</summary>
         <dl>

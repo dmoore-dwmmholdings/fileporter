@@ -1,0 +1,24 @@
+# Native Fileporter trial. Run commands from the Fileporter repository.
+# Attach to the existing app for the first trial; see docs/docwalk-trial.md.
+[app]
+launch = "src-tauri/target/release/fileporter"
+title_regex = "^Fileporter$"
+settle_ms = 600
+
+[capture]
+viewport = [900, 680]
+scale = 1
+
+[replay]
+threshold = 0.02
+fail_on_drift = false
+locator_min_tier = 2
+
+[export]
+formats = ["html", "md"]
+out = "docs/tutorials"
+
+[agent]
+max_tours = 1
+max_steps_per_tour = 5
+seeds = ["Explore Transport, Pads, Log, and Config without changing settings or sending files"]

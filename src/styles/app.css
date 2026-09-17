@@ -36,6 +36,12 @@
   --line-3: rgba(var(--acc-rgb), 0.3);
   --line-hot: rgba(var(--acc-rgb), 0.5);
 
+  /* The board is 1120 wide with 62px gutters, so its content measures 996.
+     Capping at that keeps rows and grids from stretching across a large
+     window; below 1120 the min() yields the full width and nothing changes. */
+  --measure: 996px;
+  --measure-wide: 1064px;
+
   --sans: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
 
@@ -99,6 +105,7 @@ a:hover { color: #a8f5c6; }
 .q-header {
   position: relative; z-index: 4; flex-shrink: 0;
   display: flex; align-items: center; gap: 26px;
+  width: 100%; max-width: calc(var(--measure-wide) + 56px); margin-inline: auto;
   padding: 22px 28px;
 }
 .q-brand { display: flex; align-items: center; gap: 9px; }
@@ -146,8 +153,9 @@ a:hover { color: #a8f5c6; }
 
 .q-foot {
   position: relative; z-index: 4; flex-shrink: 0;
-  display: flex; align-items: center; gap: 16px; flex-wrap: nowrap; overflow: hidden;
-  padding: 0 28px 26px; font-size: 12px; color: var(--dim);
+  display: flex; align-items: center; gap: 20px; flex-wrap: nowrap; overflow: hidden;
+  width: 100%; max-width: calc(var(--measure-wide) + 56px); margin-inline: auto;
+  min-height: 62px; padding: 10px 28px 22px; font-size: 12px; color: var(--dim);
 }
 .q-foot > span:not(.row) { flex-shrink: 0; }
 .q-foot .mono { color: var(--value); }
@@ -176,8 +184,8 @@ a:hover { color: #a8f5c6; }
 .chip-mini:disabled { opacity: 0.4; }
 .chip-mini.danger:hover:not(:disabled) { color: var(--danger); box-shadow: inset 0 0 0 1px rgba(232, 144, 127, 0.5); }
 
-/* A row reveals its actions on hover, and always on keyboard focus. */
-.act { opacity: 0.4; transition: opacity 160ms; }
+/* Keep enabled row actions readable without requiring hover or focus. */
+.act { opacity: 1; }
 .row:hover .act, .row:focus-within .act, .det:hover .act, .det:focus-within .act { opacity: 1; }
 
 .row { transition: background 160ms; }
@@ -224,26 +232,90 @@ a:hover { color: #a8f5c6; }
 
 /* ── 01 · Transport ──────────────────────────────────────────────────── */
 
-/* The stage fills what is left between header and footer. The pad button sits
-   under the chips and the payload so those stay independently clickable. */
-.q-stage-area { position: relative; flex-grow: 1; min-height: 0; }
-.q-stage {
-  position: absolute; inset: 0; z-index: 1;
-  display: block; width: 100%; padding: 0; text-align: left; cursor: pointer;
+/*
+ * The transporter is one object. Everything that belongs to it — beam, ring,
+ * payload, deck — is sized from the pad's own box rather than from the window,
+ * so growing the window scales the assembly instead of pulling it apart.
+ *
+ * The pad art's viewBox is 700x190, and its glowing core sits at y=96 of that
+ * box: 50.53% down, 49.47% up from the bottom. Those two numbers place the beam
+ * and the ring, and they hold at every size.
+ */
+.q-stage-area {
+  position: relative; flex-grow: 1; min-height: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: clamp(16px, 6vh, 62px);
+  padding: 0 28px;
 }
+/* The whole area takes the click and the drop, from behind the composition. */
+.q-stage {
+  position: absolute; inset: 0; z-index: 0;
+  display: block; width: 100%; padding: 0; cursor: pointer;
+}
+.stage-head, .stage-chips, .stage-menu, .stage-deck, .stage-rig { position: relative; z-index: 2; }
+.stage-head, .stage-deck, .stage-rig { pointer-events: none; }
 
+.stage-head { display: flex; flex-direction: column; align-items: center; width: 100%; }
+.stage-chips, .stage-menu {
+  display: flex; justify-content: center; flex-wrap: wrap; gap: 8px;
+  max-width: 100%; flex-shrink: 0;
+}
+.pad-chip {
+  padding: 6px 14px; border-radius: 999px; font-size: 12.5px;
+  color: var(--dim); box-shadow: inset 0 0 0 1px rgba(var(--acc-rgb), 0.2);
+  transition: color 160ms, box-shadow 160ms, background 160ms;
+}
+.pad-chip:hover { box-shadow: inset 0 0 0 1px var(--line-hot); }
+.pad-chip.on { color: var(--on-acc); background: var(--acc); box-shadow: none; }
+.pad-chip.dark { color: var(--dimmer); box-shadow: inset 0 0 0 1px rgba(var(--acc-rgb), 0.12); }
+
+/* The payload resting above the deck. */
+.stage-deck { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
+.stage-deck:empty { display: none; }
+.pkt {
+  width: min(250px, 100%); flex-shrink: 0;
+  display: flex; align-items: center; gap: 9px; padding: 8px 12px;
+  background: #0c1712;
+  box-shadow: inset 0 0 0 1px var(--line-3), 0 8px 22px rgba(0, 0, 0, 0.55);
+  font-size: 12px; transition: transform 200ms ease;
+}
+.pkt-name { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pkt-size { color: var(--dim); flex-shrink: 0; }
+.q-stage-area:hover .pkt { transform: translateY(-6px); }
+
+/* The rig: the pad's box, and the anchor for everything drawn against it.
+   Width is capped by the design's 680px, by the available width, and by the
+   viewport height, so a short wide window cannot make the deck tower. */
+.stage-rig {
+  position: relative; flex-shrink: 0;
+  width: min(680px, 100%, 90vh);
+  aspect-ratio: 700 / 190;
+}
+.stage-pad { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* The pad casts its own pool of light. Anchoring it to the rig keeps the glow
+   under the deck instead of stranded at the bottom of a tall window. */
+.rig-glow {
+  position: absolute; left: -34%; right: -34%; top: 6%; bottom: -46%;
+  pointer-events: none; z-index: -1;
+  background: radial-gradient(50% 54% at 50% 50%, rgba(var(--acc-rgb), 0.15), transparent 72%);
+  transition: opacity 220ms ease;
+}
+.drag .rig-glow, .ph-go .rig-glow { opacity: 1.6; }
+
+/* Beams stand on the pad's core and rise from it, in the pad's own proportions. */
 .beam {
-  position: absolute; left: 50%; top: 13%; bottom: 26%; pointer-events: none;
+  position: absolute; left: 50%; bottom: 49.47%;
+  height: 211%; pointer-events: none;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 28%, #000 72%, transparent);
   mask-image: linear-gradient(90deg, transparent, #000 28%, #000 72%, transparent);
 }
 .beam-o {
-  width: 340px; margin-left: -170px; opacity: 0.3; filter: blur(22px);
+  width: 50%; margin-left: -25%; opacity: 0.3; filter: blur(22px);
   background: linear-gradient(180deg, rgba(var(--acc-rgb), 0), rgba(var(--acc-rgb), 0.4));
   transition: opacity 220ms ease;
 }
 .beam-m {
-  width: 150px; margin-left: -75px; opacity: 0.3; overflow: hidden;
+  width: 22%; margin-left: -11%; opacity: 0.3; overflow: hidden;
   background: linear-gradient(180deg, rgba(var(--acc-rgb), 0), rgba(var(--acc-rgb), 0.26));
   transition: opacity 220ms ease;
 }
@@ -256,54 +328,21 @@ a:hover { color: #a8f5c6; }
 }
 @keyframes flow { to { transform: translateY(27.5px); } }
 
-.q-stage:hover .beam-o, .q-stage:focus-visible .beam-o { opacity: 0.46; }
-.q-stage:hover .beam-m, .q-stage:focus-visible .beam-m { opacity: 0.46; }
-.q-stage:hover .beam-m::after { animation-duration: 1.3s; }
+.q-stage-area:hover .beam-o { opacity: 0.46; }
+.q-stage-area:hover .beam-m { opacity: 0.46; }
+.q-stage-area:hover .beam-m::after { animation-duration: 1.3s; }
 
-.stage-head {
-  position: absolute; left: 0; right: 0; top: 6%; z-index: 2;
-  display: flex; flex-direction: column; align-items: center;
-  pointer-events: none; padding: 0 28px;
+/* The landing ring is centred on the same core the beam stands on. */
+.ring {
+  position: absolute; left: 50%; bottom: 13.77%; margin-left: -45.5%;
+  width: 91%; aspect-ratio: 620 / 132;
+  border-radius: 50%; box-shadow: 0 0 0 1px var(--acc); opacity: 0; pointer-events: none;
 }
-
-.stage-chips, .stage-menu {
-  position: absolute; left: 0; right: 0; z-index: 3;
-  display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; padding: 0 28px;
+.ph-done .ring { animation: ring 1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+@keyframes ring {
+  0% { transform: scale(0.5); opacity: 0.8; }
+  100% { transform: scale(1.12); opacity: 0; }
 }
-.stage-chips { top: 27%; }
-.stage-menu { top: 38%; }
-
-.stage-deck {
-  position: absolute; left: 0; right: 0; top: 46%; z-index: 2;
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  pointer-events: none;
-}
-.pad-chip {
-  padding: 6px 14px; border-radius: 999px; font-size: 12.5px;
-  color: var(--dim); box-shadow: inset 0 0 0 1px rgba(var(--acc-rgb), 0.2);
-  transition: color 160ms, box-shadow 160ms, background 160ms;
-}
-.pad-chip:hover { box-shadow: inset 0 0 0 1px var(--line-hot); }
-.pad-chip.on { color: var(--on-acc); background: var(--acc); box-shadow: none; }
-.pad-chip.dark { color: var(--dimmer); box-shadow: inset 0 0 0 1px rgba(var(--acc-rgb), 0.12); }
-
-/* The payload resting on the deck. */
-.pkt {
-  width: 250px; flex-shrink: 0;
-  display: flex; align-items: center; gap: 9px; padding: 8px 12px;
-  background: #0c1712;
-  box-shadow: inset 0 0 0 1px var(--line-3), 0 8px 22px rgba(0, 0, 0, 0.55);
-  font-size: 12px; transition: transform 200ms ease;
-}
-.pkt-name { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pkt-size { color: var(--dim); flex-shrink: 0; }
-.q-stage-area:hover .pkt { transform: translateY(-6px); }
-
-.stage-pad {
-  position: absolute; left: 50%; bottom: 12%;
-  width: min(680px, 62vw); height: auto; transform: translateX(-50%);
-}
-
 
 /* Sending energises the beam and rides the payload; landing rings the deck.
    The board lifts the payload away over 900ms because its send is a 1.5s
@@ -317,17 +356,6 @@ a:hover { color: #a8f5c6; }
 .ph-go .beam-m { opacity: 0.62; }
 .ph-go .beam-m::after { animation-duration: 0.34s; }
 .ph-go .pad-core, .ph-done .pad-core { animation-duration: 0.5s; }
-
-.ring {
-  position: absolute; left: 50%; bottom: 14%; width: min(620px, 57vw); height: 132px;
-  margin-left: 0; transform: translateX(-50%);
-  border-radius: 50%; box-shadow: 0 0 0 1px var(--acc); opacity: 0; pointer-events: none;
-}
-.ph-done .ring { animation: ring 1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-@keyframes ring {
-  0% { transform: translateX(-50%) scale(0.5); opacity: 0.8; }
-  100% { transform: translateX(-50%) scale(1.12); opacity: 0; }
-}
 
 /* Dragging over the stage arms the field. */
 .drag .beam-o { opacity: 0.62; }
@@ -381,12 +409,21 @@ a:hover { color: #a8f5c6; }
 .m-core { animation: breathe 3.9s ease-in-out infinite; }
 .m-pool { opacity: 0.6; }
 
-/* Arrivals along the bottom of Transport. A long file name truncates rather
-   than wrapping the strip onto a second line in a small window. */
-.arrival-row { display: flex; align-items: center; gap: 10px; min-width: 0; white-space: nowrap; }
+/* Arrivals along the bottom of Transport. The label binds the row together, and
+   a long file name truncates rather than wrapping the strip onto two lines. */
+.arrivals { display: flex; align-items: center; gap: 18px; min-width: 0; }
+.arrivals-label {
+  font-size: 10.5px; letter-spacing: 0.13em; text-transform: uppercase;
+  color: var(--dimmer); flex-shrink: 0;
+}
+.arrival-row {
+  display: flex; align-items: center; gap: 10px; min-width: 0; white-space: nowrap;
+  padding: 5px 10px; margin: -5px 0; border-radius: 3px;
+}
+.arrivals .arrival-row + .arrival-row { box-shadow: inset 1px 0 0 rgba(var(--acc-rgb), 0.14); }
 .arrival-row .name {
   font-family: var(--mono); font-size: 12px; color: var(--value);
-  max-width: 22ch; overflow: hidden; text-overflow: ellipsis;
+  min-width: 9ch; max-width: 22ch; overflow: hidden; text-overflow: ellipsis;
 }
 .arrival-row .size { font-family: var(--mono); font-size: 11px; color: var(--dim); flex-shrink: 0; }
 .arrival-row .act { display: flex; gap: 6px; flex-shrink: 0; }
@@ -397,7 +434,7 @@ a:hover { color: #a8f5c6; }
 .pad-grid {
   position: relative; display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 26px; padding: 0 56px;
+  gap: 26px; width: min(100%, var(--measure)); margin-inline: auto;
 }
 .tile {
   position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -416,7 +453,7 @@ a:hover { color: #a8f5c6; }
 .tile-rename { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; }
 .tile-rename .field { width: 130px; font-size: 13px; text-align: center; }
 
-.pad-rows { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 0 62px; }
+.pad-rows { position: relative; display: flex; flex-direction: column; gap: 2px; width: min(100%, var(--measure)); margin-inline: auto; }
 .pad-row {
   display: flex; align-items: center; gap: 12px;
   padding: 11px 12px; margin: 0 -12px; width: calc(100% + 24px);
@@ -436,7 +473,7 @@ a:hover { color: #a8f5c6; }
 /* ── 03 · Log ────────────────────────────────────────────────────────── */
 
 .flight {
-  position: relative; overflow: hidden; margin: 0 62px; flex-shrink: 0;
+  position: relative; overflow: hidden; flex-shrink: 0; width: min(100%, var(--measure)); margin-inline: auto;
   padding: 13px 16px; box-shadow: inset 0 0 0 1px var(--line-1);
 }
 .flight + .flight { margin-top: 10px; }
@@ -458,7 +495,7 @@ a:hover { color: #a8f5c6; }
 .flight-targets { position: relative; display: flex; flex-wrap: wrap; gap: 24px; margin-top: 10px; font-size: 12px; color: var(--dim); }
 .flight-targets .mono { color: var(--value); }
 
-.records { position: relative; margin: 0 62px; flex-shrink: 0; }
+.records { position: relative; flex-shrink: 0; width: min(100%, var(--measure)); margin-inline: auto; }
 /* The row is the grid; a retry sits beside it without disturbing the columns. */
 .record-line { display: flex; align-items: center; margin: 0 -12px; padding-right: 12px; }
 .record-retry { flex-shrink: 0; }
@@ -505,7 +542,7 @@ a:hover { color: #a8f5c6; }
 .cfg-grid {
   position: relative; display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 56px; padding: 0 62px; align-items: start;
+  gap: 56px; align-items: start; width: min(100%, var(--measure)); margin-inline: auto;
 }
 .cfg-col { display: flex; flex-direction: column; gap: 24px; }
 .cfg-field { display: flex; flex-direction: column; gap: 7px; }
@@ -515,7 +552,7 @@ a:hover { color: #a8f5c6; }
 .cfg-toggles { display: flex; flex-direction: column; }
 .cfg-retention { display: flex; gap: 20px; flex-wrap: wrap; }
 
-.diag { padding: 0 62px; }
+.diag-group { display: flex; flex-direction: column; width: min(100%, var(--measure)); margin-inline: auto; }
 .diag summary {
   font-size: 12.5px; color: var(--dim); cursor: pointer;
   padding: 6px 0; list-style: none;
@@ -591,28 +628,53 @@ a:hover { color: #a8f5c6; }
 }
 .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
 
+/* ── Scrollbars ──────────────────────────────────────────────────────── */
+
+/* Windows draws a wide light scrollbar by default, which both costs layout
+   width and reads as a bright seam against this palette. */
+.q-body.scrolls { scrollbar-width: thin; scrollbar-color: rgba(var(--acc-rgb), 0.22) transparent; }
+.q-body.scrolls::-webkit-scrollbar { width: 10px; height: 10px; }
+.q-body.scrolls::-webkit-scrollbar-track { background: transparent; }
+.q-body.scrolls::-webkit-scrollbar-thumb {
+  background: rgba(var(--acc-rgb), 0.18); border-radius: 999px;
+  border: 3px solid transparent; background-clip: content-box;
+}
+.q-body.scrolls::-webkit-scrollbar-thumb:hover { background: rgba(var(--acc-rgb), 0.32); background-clip: content-box; }
+
 /* ── Motion ──────────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
+    animation: none !important;
     transition-duration: 0.001ms !important;
   }
-  .pad-seg, .m-seg { opacity: 0.3; }
+  /* A pad with its animation removed must still read as lit, not as a frozen
+     frame: the blink keyframe ends on opacity 0, which would erase the nodes. */
+  .pad-seg, .m-seg { opacity: 0.34; }
   .pad-node, .m-node { opacity: 1; }
-  .pad-core, .m-core { opacity: 0.7; }
+  .pad-core, .m-core { opacity: 0.78; }
+  .beam-o { opacity: 0.42; }
+  .beam-m { opacity: 0.4; }
+  .beam-m::after { opacity: 0.5; }
+  .beacon { opacity: 1; }
+  .flight::after { opacity: 0; }
+  .flight-rate { opacity: 1; }
+  .fade { opacity: 1; transform: none; }
 }
 
 /* ── Narrow windows ──────────────────────────────────────────────────── */
+
+/* The reassurance line is the first thing to go: it costs the arrivals their
+   file names long before the window is actually narrow. */
+@media (max-width: 1060px) {
+  .q-foot .tagline { display: none; }
+}
 
 @media (max-width: 860px) {
   .q-header { gap: 16px; padding: 18px 20px; flex-wrap: wrap; }
   .q-nav { gap: 16px; order: 3; width: 100%; }
   .q-body { padding: 0 20px; }
   .q-headline h1 { font-size: 34px; }
-  .pad-grid, .pad-rows, .records, .cfg-grid, .diag { padding-left: 0; padding-right: 0; }
-  .flight { margin: 0; }
   .cfg-grid { gap: 32px; }
   .record { grid-template-columns: 18px 62px minmax(0, 1fr) 76px 96px; gap: 10px; }
   .record .pad, .record .size { display: none; }
@@ -625,5 +687,6 @@ a:hover { color: #a8f5c6; }
   .q-body.center { gap: 26px; }
   .q-headline p { font-size: 13.5px; }
   .arrival-row .name { max-width: 14ch; }
-  .arrival-row + .arrival-row { display: none; }
+  .arrivals .arrival-row + .arrival-row { display: none; }
+  .arrivals-label { display: none; }
 }

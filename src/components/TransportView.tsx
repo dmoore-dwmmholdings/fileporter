@@ -49,6 +49,7 @@ export function TransportView({ snapshot, selectedDeviceIds, onToggleDevice, onP
   const [landed, setLanded] = useState(false);
   const dragDepth = useRef(0);
   const menuRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLButtonElement>(null);
   // Every linked pad is a destination, dark ones included — picking one queues
   // the payload until it wakes, which is what "holds your pattern" means.
   const pads = snapshot.trustedDevices;
@@ -72,7 +73,13 @@ export function TransportView({ snapshot, selectedDeviceIds, onToggleDevice, onP
   useEffect(() => {
     if (!menuOpen) return;
     menuRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
-    function onKey(event: KeyboardEvent) { if (event.key === 'Escape') setMenuOpen(false); }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setMenuOpen(false);
+        stageRef.current?.focus();
+      }
+    }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [menuOpen]);
@@ -132,19 +139,17 @@ export function TransportView({ snapshot, selectedDeviceIds, onToggleDevice, onP
       >
         <Floor />
 
+        {/* The whole area is the click and drop target, sitting behind the
+            composition so the chips stay independently clickable. */}
         <button
+          ref={stageRef}
           className="q-stage"
           type="button"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           aria-label="Send files or folders"
           onClick={() => setMenuOpen((open) => !open)}
-        >
-          <span className="beam beam-o" aria-hidden="true" />
-          <span className="beam beam-m" aria-hidden="true" />
-          <span className="ring" aria-hidden="true" />
-          <TransportPad className="stage-pad" />
-        </button>
+        />
 
         <div className="stage-head">
           <div className="q-headline fade">
@@ -175,13 +180,26 @@ export function TransportView({ snapshot, selectedDeviceIds, onToggleDevice, onP
         </div>
 
         {menuOpen && (
-          <div className="stage-menu" ref={menuRef} role="menu" aria-label="Browse files or folders">
-            <button type="button" role="menuitem" className="pad-chip" onClick={() => { setMenuOpen(false); onPick('files'); }}>Browse files</button>
-            <button type="button" role="menuitem" className="pad-chip" onClick={() => { setMenuOpen(false); onPick('folder'); }}>Browse folder</button>
+          <div
+            className="stage-menu" ref={menuRef} role="menu" aria-label="Browse files or folders"
+            onKeyDown={(event) => {
+              const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('button') ?? []);
+              const index = items.indexOf(document.activeElement as HTMLButtonElement);
+              const next = event.key === 'ArrowDown' ? (index + 1) % items.length
+                : event.key === 'ArrowUp' ? (index + items.length - 1) % items.length
+                  : event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : null;
+              if (next !== null) { event.preventDefault(); items[next]?.focus(); }
+              // Put Tab back at the trigger before the browser advances focus,
+              // so removing the menu cannot strand it on the document body.
+              if (event.key === 'Tab') { setMenuOpen(false); stageRef.current?.focus(); }
+            }}
+          >
+            <button type="button" role="menuitem" tabIndex={-1} className="pad-chip" onClick={() => { setMenuOpen(false); stageRef.current?.focus(); onPick('files'); }}>Browse files</button>
+            <button type="button" role="menuitem" tabIndex={-1} className="pad-chip" onClick={() => { setMenuOpen(false); stageRef.current?.focus(); onPick('folder'); }}>Browse folder</button>
           </div>
         )}
 
-        <div className="stage-deck" aria-hidden={packets.length === 0}>
+        <div className="stage-deck">
           {packets.map((packet, index) => (
             <span className={`pkt p${index + 1}`} key={packet.key}>
               <FileGlyph kind={packet.glyph} />
@@ -190,10 +208,25 @@ export function TransportView({ snapshot, selectedDeviceIds, onToggleDevice, onP
             </span>
           ))}
         </div>
+
+        {/* Beam, ring and deck are sized from the pad, so the transporter scales
+            as one object instead of drifting apart in a large window. */}
+        <div className="stage-rig">
+          <span className="rig-glow" aria-hidden="true" />
+          <span className="beam beam-o" aria-hidden="true" />
+          <span className="beam beam-m" aria-hidden="true" />
+          <span className="ring" aria-hidden="true" />
+          <TransportPad className="stage-pad" />
+        </div>
       </div>
 
       <div className="q-foot">
-        {arrivals.map((arrival) => <ArrivalRow key={arrival.item.itemId} item={arrival.item} from={arrival.from} />)}
+        {arrivals.length > 0 && (
+          <div className="arrivals">
+            <span className="arrivals-label">Just arrived</span>
+            {arrivals.map((arrival) => <ArrivalRow key={arrival.item.itemId} item={arrival.item} from={arrival.from} />)}
+          </div>
+        )}
         <div className="q-spacer" />
         <span className="tagline">Encrypted · verified · never leaves this network</span>
       </div>

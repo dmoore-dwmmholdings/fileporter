@@ -43,6 +43,61 @@ it('hydrates the screen from the Tauri snapshot', async () => {
   expect(screen.getByRole('heading', { name: 'Drop anything.' })).toBeVisible();
 });
 
+it('navigates the browse menu with arrows and restores focus without opening a picker', async () => {
+  vi.spyOn(appBridge, 'getAppSnapshot').mockResolvedValue(readySnapshot);
+  const files = vi.spyOn(appBridge, 'chooseFiles');
+  const folder = vi.spyOn(appBridge, 'chooseDirectory');
+  render(<App />);
+  const trigger = await screen.findByRole('button', { name: 'Send files or folders' });
+  fireEvent.click(trigger);
+  const first = screen.getByRole('menuitem', { name: 'Browse files' });
+  const last = screen.getByRole('menuitem', { name: 'Browse folder' });
+  expect(first).toHaveFocus();
+  fireEvent.keyDown(first, { key: 'ArrowUp' });
+  expect(last).toHaveFocus();
+  fireEvent.keyDown(last, { key: 'ArrowDown' });
+  expect(first).toHaveFocus();
+  fireEvent.keyDown(first, { key: 'End' });
+  expect(last).toHaveFocus();
+  fireEvent.keyDown(last, { key: 'Home' });
+  expect(first).toHaveFocus();
+  fireEvent.keyDown(first, { key: 'Escape' });
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  expect(trigger).toHaveFocus();
+  expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  expect(files).not.toHaveBeenCalled();
+  expect(folder).not.toHaveBeenCalled();
+});
+
+it('closes the browse menu on Tab without leaving focus on a removed item', async () => {
+  vi.spyOn(appBridge, 'getAppSnapshot').mockResolvedValue(readySnapshot);
+  render(<App />);
+  const trigger = await screen.findByRole('button', { name: 'Send files or folders' });
+  fireEvent.click(trigger);
+  fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Browse files' }), { key: 'Tab' });
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  // jsdom does not run the browser's default Tab movement. Native verification
+  // checks that movement; here the anchor must survive removal of the menu.
+  expect(trigger).toHaveFocus();
+});
+
+it('labels adjacent fields and actions independently for native WebKit', async () => {
+  vi.spyOn(appBridge, 'getAppSnapshot').mockResolvedValue(readySnapshot);
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Pads' }));
+  const endpoint = screen.getByRole<HTMLInputElement>('textbox', { name: 'Add a pad by address' });
+  const add = screen.getByRole('button', { name: 'Add' });
+  expect(endpoint.labels).toHaveLength(1);
+  expect(add.closest('label')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Config' }));
+  const directory = screen.getByRole('textbox', { name: 'Where arrivals land' });
+  const choose = screen.getByRole('button', { name: 'Choose' });
+  expect(directory).toHaveAttribute('readonly');
+  expect(directory).toHaveAccessibleDescription(/Nothing is ever overwritten/);
+  expect(choose.closest('label')).toBeNull();
+  expect(screen.getByRole('textbox', { name: 'Preferred listen address' })).toHaveAccessibleDescription(/Port 0/);
+});
+
 it('shows an actionable error when snapshot loading fails', async () => {
   vi.spyOn(appBridge, 'getAppSnapshot').mockRejectedValue(new Error('offline'));
   render(<App />);
