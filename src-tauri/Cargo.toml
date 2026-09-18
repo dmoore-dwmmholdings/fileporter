@@ -28,6 +28,10 @@ desktop = [
     "dep:tauri-plugin-single-instance",
 ]
 
+# The iOS app links this library as a static archive and drives it through a
+# small C interface; see src/mobile.rs and ios/.
+mobile = ["tokio/rt-multi-thread"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

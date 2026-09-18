@@ -251,7 +251,7 @@ impl SettingsRepository {
         if changed == 0 {
             return Err(AppError::Validation {
                 code: "device_not_found",
-                message: "That trusted device is no longer available.",
+                message: "Pad gone",
                 field: Some("deviceId"),
             });
         }
@@ -374,7 +374,7 @@ impl SettingsRepository {
         .map_err(|error| match error {
             AppError::Database(rusqlite::Error::QueryReturnedNoRows) => AppError::Validation {
                 code: "pairing_not_found",
-                message: "That pairing request is no longer available.",
+                message: "Pairing gone",
                 field: Some("pairingId"),
             },
             other => other,
@@ -407,7 +407,7 @@ impl SettingsRepository {
             .map_err(AppError::Database)?
             .ok_or(AppError::Validation {
                 code: "pairing_not_found",
-                message: "That pairing request is no longer available.",
+                message: "Pairing gone",
                 field: Some("pairingId"),
             })?;
         if persisted.2 <= now {
@@ -428,7 +428,7 @@ impl SettingsRepository {
         {
             return Err(AppError::Validation {
                 code: "invalid_pairing",
-                message: "The pairing request is invalid.",
+                message: "Invalid pairing",
                 field: Some("pairingId"),
             });
         }
