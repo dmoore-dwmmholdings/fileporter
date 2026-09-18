@@ -33,7 +33,7 @@ export interface BackendDeviceViewModel { id: string; name: string; state: Devic
 export interface TransferTargetViewModel { id: string; deviceName: string; state: BatchState; progress: number; rateLabel?: string; }
 export interface TransferBatchViewModel { id: string; label: string; state: BatchState; progress: number; targets: TransferTargetViewModel[]; }
 export interface NearbyDeviceViewModel { deviceId: string; displayName: string; endpoint: string; certificateFingerprint: string; protocolVersion: number; capabilities: string[]; }
-export interface HistoryTopLevelItemViewModel { itemId: string; displayName: string; kind: string; size: number; state: BatchState; available: boolean; destinationLabel?: string; }
+export interface HistoryTopLevelItemViewModel { itemId: string; displayName: string; kind: string; size: number; itemCount?: number; state: BatchState; available: boolean; destinationLabel?: string; }
 export interface HistoryItemViewModel { id: string; direction: HistoryDirection; peerName: string; summary: string; timeLabel: string; state: BatchState; items: HistoryTopLevelItemViewModel[]; }
 export interface QueuedBatch { id: string; itemCount: number; targetDeviceIds: string[]; state: string; waitingForAvailable: boolean; }
 export interface PendingPairing { id: string; deviceId: string; remoteName: string; certificateFingerprint: string; expiresAt: number; localConfirmed: boolean; remoteConfirmed: boolean; sasCode: string | null; }

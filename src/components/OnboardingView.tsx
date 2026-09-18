@@ -23,11 +23,11 @@ export function OnboardingView({ onComplete }: { onComplete: (snapshot: BackendA
   async function choose() {
     setError(null);
     try { const paths = await appBridge.chooseDirectory(); setDirectory(paths[0] ?? null); }
-    catch { setError('The folder picker could not open. Please try again.'); }
+    catch { setError('Picker failed'); }
   }
 
   async function engage() {
-    if (!ready || !directory) { setError('Name this pad and choose where arrivals land.'); return; }
+    if (!ready || !directory) { setError('Name and folder required'); return; }
     setSaving(true); setError(null);
     try {
       const next = await appBridge.completeOnboarding({
@@ -38,14 +38,14 @@ export function OnboardingView({ onComplete }: { onComplete: (snapshot: BackendA
       setLive(true);
       window.setTimeout(() => onComplete(next), 620);
     } catch {
-      setError('Fileporter could not save this setup. The folder has not been enabled for receiving.');
+      setError('Setup failed');
       setSaving(false);
     }
   }
 
   const toggles = [
-    { key: 'launch', label: 'Bring the pad online when I sign in', value: launchAtLogin, set: setLaunchAtLogin },
-    { key: 'notify', label: 'Notify me when something arrives', value: notificationsEnabled, set: setNotificationsEnabled }
+    { key: 'launch', label: 'Start at sign-in', value: launchAtLogin, set: setLaunchAtLogin },
+    { key: 'notify', label: 'Notify on arrival', value: notificationsEnabled, set: setNotificationsEnabled }
   ];
 
   return (
@@ -66,12 +66,7 @@ export function OnboardingView({ onComplete }: { onComplete: (snapshot: BackendA
 
       <div className="q-body scrolls" style={{ paddingTop: 22 }}>
         <div className="q-headline fade">
-          <h1>{live ? 'This pad is live.' : 'Set up this pad.'}</h1>
-          <p>
-            {live
-              ? 'It is advertising on this network. Open Fileporter on another computer and the two will find each other.'
-              : 'Your computers find each other on this network and prove who they are. Files travel straight between them — no cloud, no account, nothing uploaded anywhere.'}
-          </p>
+          <h1>{live ? 'Pad is live' : 'Set up this pad'}</h1>
         </div>
 
         <div className="ob-form fade">
@@ -87,7 +82,6 @@ export function OnboardingView({ onComplete }: { onComplete: (snapshot: BackendA
               autoFocus
               onChange={(event) => setDeviceName(event.target.value)}
             />
-            <span className="hint">This is what your other computers will call it.</span>
           </label>
 
           <label className="cfg-field">
@@ -96,7 +90,6 @@ export function OnboardingView({ onComplete }: { onComplete: (snapshot: BackendA
               <input className="field mono" style={{ fontSize: 13.5 }} value={directory ?? ''} readOnly placeholder="Choose a folder" aria-label="Where arrivals land" />
               <button type="button" className="chip" onClick={() => { void choose(); }}>Choose</button>
             </span>
-            <span className="hint">Checked for write access before it is saved. Nothing there is ever overwritten.</span>
           </label>
 
           <div className="ob-toggles">
@@ -111,13 +104,8 @@ export function OnboardingView({ onComplete }: { onComplete: (snapshot: BackendA
           {error && <p className="err" role="alert">{error}</p>}
 
           <button className="cta" type="button" disabled={!ready || saving} onClick={() => { void engage(); }}>
-            {live ? 'Pad is live' : saving ? 'Bringing it online…' : 'Bring this pad online'}
+            {live ? 'Live' : saving ? 'Starting…' : 'Bring this pad online'}
           </button>
-          <span className="hint ob-note">
-            {live
-              ? 'You can rename it or change the folder any time in Config.'
-              : 'macOS asks for local-network access; Windows asks for the firewall on Private networks.'}
-          </span>
         </div>
       </div>
 

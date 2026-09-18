@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Floor, Headline } from './Shell';
 import { appBridge } from '../lib/bridge';
-import { formatBytes, formatPeer, formatWhen } from '../lib/format';
+import { formatBytes, formatItemSize, formatPeer, formatWhen } from '../lib/format';
 import type {
   AppSnapshotViewModel, BackendAppSnapshot, BatchState, HistoryItemViewModel,
   HistoryTopLevelItemViewModel, TransferBatchViewModel, TrustedDeviceViewModel
@@ -27,8 +27,8 @@ export function LogView({ snapshot, onSnapshot }: { snapshot: AppSnapshotViewMod
 
   async function exportLogs() {
     setError(null); setStatus(null);
-    try { const destination = await appBridge.exportLogs(); setStatus(destination ? 'Exported redacted diagnostics.' : 'Log export was cancelled.'); }
-    catch { setError('Fileporter could not export its logs.'); }
+    try { const destination = await appBridge.exportLogs(); setStatus(destination ? 'Exported' : 'Cancelled'); }
+    catch { setError('Export failed'); }
   }
 
   return (
@@ -37,13 +37,9 @@ export function LogView({ snapshot, onSnapshot }: { snapshot: AppSnapshotViewMod
       <div className="q-body scrolls" style={{ gap: 22, paddingTop: 20 }}>
         <Headline
           title={count > 0
-            ? `${count} transport${count === 1 ? '' : 's'}.`
-            : inFlight.length > 0 ? `${inFlight.length} in flight.` : 'Nothing yet.'}
-          sub={count > 0
-            ? `${formatBytes(moved)} moved${retention ? ` in the last ${retention} days` : ''}. Every one verified end to end.`
-            : inFlight.length > 0
-              ? 'Nothing has finished yet. Everything that lands is verified end to end.'
-              : 'What you send and what arrives will be listed here, newest first.'}
+            ? `${count} transport${count === 1 ? '' : 's'}`
+            : inFlight.length > 0 ? `${inFlight.length} in flight` : 'Nothing yet'}
+          sub={count > 0 ? formatBytes(moved) : undefined}
           id="log-heading"
         />
 
@@ -61,7 +57,7 @@ export function LogView({ snapshot, onSnapshot }: { snapshot: AppSnapshotViewMod
       <div className="q-foot">
         <span className="foot-detail">{retention ? `Kept ${retention} days` : 'Kept forever'}</span>
         <span className="foot-detail">Staging <span className="mono">{formatBytes(snapshot.about.ownedStagingBytes) || '0 B'}</span></span>
-        <span>{failedCount === 0 ? 'Nothing has failed verification' : `${failedCount} did not verify`}</span>
+        {failedCount > 0 && <span style={{ color: 'var(--danger)' }}>{failedCount} failed</span>}
         {status && <span role="status" style={{ color: 'var(--acc)' }}>{status}</span>}
         {error && <span role="alert" style={{ color: 'var(--danger)' }}>{error}</span>}
         <div className="q-spacer" />
@@ -83,7 +79,7 @@ function Flight({ batch, onSnapshot, onError }: {
   async function abort() {
     setBusy(true); onError(null);
     try { onSnapshot(await appBridge.cancelBatch(batch.id)); }
-    catch { onError('Fileporter could not abort that transport.'); }
+    catch { onError('Abort failed'); }
     finally { setBusy(false); }
   }
 
@@ -129,7 +125,7 @@ function Record({ entry, trusted, onSnapshot }: {
   async function retry() {
     setBusy(true); setRetryError(null);
     try { onSnapshot(await appBridge.retryBatch(entry.id)); }
-    catch { setRetryError('Fileporter could not run that transport again.'); }
+    catch { setRetryError('Retry failed'); }
     finally { setBusy(false); }
   }
 
@@ -177,10 +173,10 @@ function Detail({ entry }: { entry: HistoryItemViewModel }) {
       if (action === 'reveal') await appBridge.revealCompletedBatch(entry.id);
       else if (action === 'copy') await appBridge.copyCompletedBatch(entry.id);
       else await appBridge.moveCompletedBatch(entry.id);
-      setNote(action === 'reveal' ? 'Revealed everything that arrived.' : action === 'copy' ? 'Everything that arrived is on the clipboard.' : 'Everything that arrived is staged to move.');
+      setNote(action === 'reveal' ? 'Revealed' : action === 'copy' ? 'Copied' : 'Ready to move');
     } catch {
       setFailed(true);
-      setNote(`Fileporter could not ${action} the arrived files.`);
+      setNote(`${action} failed`);
     } finally { setBusy(false); }
   }
 
@@ -190,10 +186,10 @@ function Detail({ entry }: { entry: HistoryItemViewModel }) {
       if (action === 'reveal') await appBridge.revealItem(item.itemId);
       else if (action === 'copy') await appBridge.copyItem(item.itemId);
       else await appBridge.moveItem(item.itemId);
-      setNote(action === 'reveal' ? `Revealed ${item.displayName}.` : action === 'copy' ? `${item.displayName} is on the clipboard.` : `${item.displayName} is staged to move.`);
+      setNote(action === 'reveal' ? 'Revealed' : action === 'copy' ? 'Copied' : 'Ready to move');
     } catch {
       setFailed(true);
-      setNote(`Fileporter could not ${action} ${item.displayName}.`);
+      setNote(`${action} failed`);
     } finally { setBusy(false); }
   }
 
@@ -212,7 +208,7 @@ function Detail({ entry }: { entry: HistoryItemViewModel }) {
       {items.map((item) => (
         <div className="det-item" key={item.itemId}>
           <span className="name" title={item.destinationLabel ? `Saved to ${item.destinationLabel}` : item.displayName}>{item.displayName}</span>
-          <span className="size">{item.kind === 'directory' ? `${item.size} items` : formatBytes(item.size)}</span>
+          <span className="size">{formatItemSize(item)}</span>
           {item.available ? (
             <span className="act det-actions">
               <button type="button" className="chip-mini" disabled={busy} onClick={() => { void act('reveal', item); }} aria-label={`Reveal ${item.displayName}`}>REVEAL</button>
@@ -224,9 +220,7 @@ function Detail({ entry }: { entry: HistoryItemViewModel }) {
           )}
         </div>
       ))}
-      <p className={failed ? 'det-note bad' : 'det-note'} role="status">
-        {note ?? 'Move stages the system clipboard — paste in your file manager to finish it.'}
-      </p>
+      {note && <p className={failed ? 'det-note bad' : 'det-note'} role="status">{note}</p>}
     </div>
   );
 }

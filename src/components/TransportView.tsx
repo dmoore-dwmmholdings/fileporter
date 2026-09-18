@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { TransportPad } from './PadArt';
 import { Floor } from './Shell';
 import { appBridge } from '../lib/bridge';
-import { formatBytes, formatPeer, isMacLike } from '../lib/format';
+import { formatItemSize, formatPeer, isMacLike } from '../lib/format';
 import type { AppSnapshotViewModel, HistoryTopLevelItemViewModel } from '../types/view-models';
 
 /** What rests on the deck: at most three, the way the board draws it. */
@@ -90,22 +90,17 @@ export function TransportView({ snapshot, selectedDeviceIds, onToggleDevice, onP
   const padWord = `${count} pad${count === 1 ? '' : 's'}`;
   const phase = sending ? 'go' : landed ? 'done' : 'idle';
 
-  // A dark destination changes what actually happens — it waits — so the line
-  // says so rather than implying an immediate transport.
-  const held = darkCount > 0
-    ? `, ${darkCount === count ? 'waiting' : `${darkCount} waiting`} until ${darkCount === 1 ? 'it wakes' : 'they wake'}`
-    : '';
+  // A dark destination waits rather than going now; the count says so.
+  const held = darkCount > 0 ? ` · ${darkCount} dark` : '';
 
-  const title = dragging && !sending ? 'Let go.' : sending ? 'Going.' : landed ? 'Landed.' : 'Drop anything.';
-  const sub = dragging && !sending
-    ? `Release and it goes to ${padWord}${held}`
-    : sending
-      ? `On the beam to ${padWord}`
-      : landed
-        ? 'Every pad returned a matching digest'
-        : pads.length === 0
-          ? 'No pad is linked yet — Fileporter is listening for one'
-          : count === 0 ? 'Pick a pad below' : `It reassembles on ${padWord}${held}`;
+  const title = dragging && !sending ? 'Let go' : sending ? 'Going' : landed ? 'Landed' : 'Drop anything';
+  const sub = sending || dragging
+    ? `${padWord}${held}`
+    : landed
+      ? ''
+      : pads.length === 0
+        ? 'No pads'
+        : count === 0 ? 'Pick a pad' : `${padWord}${held}`;
 
   // The deck carries what is actually moving; failing that, what is staged and
   // waiting for a recipient. An idle deck stays empty.
@@ -154,7 +149,7 @@ export function TransportView({ snapshot, selectedDeviceIds, onToggleDevice, onP
         <div className="stage-head">
           <div className="q-headline fade">
             <h1>{title}</h1>
-            <p>{sub}</p>
+            {sub ? <p>{sub}</p> : null}
           </div>
         </div>
 
@@ -176,7 +171,7 @@ export function TransportView({ snapshot, selectedDeviceIds, onToggleDevice, onP
                 </button>
               );
             })
-            : <span className="pad-chip dark">No pad linked</span>}
+            : <span className="pad-chip dark">No pads</span>}
         </div>
 
         {menuOpen && (
@@ -228,17 +223,12 @@ export function TransportView({ snapshot, selectedDeviceIds, onToggleDevice, onP
           </div>
         )}
         <div className="q-spacer" />
-        <span className="tagline">Encrypted · verified · never leaves this network</span>
       </div>
     </>
   );
 }
 
-/**
- * What just arrived, with the two things you actually want to do with it. Copy
- * and Cut put the real file on the system clipboard, so the paste happens in
- * the file manager exactly as it would for any other file.
- */
+/** What just arrived, and the two things you do with it. */
 function ArrivalRow({ item, from }: { item: HistoryTopLevelItemViewModel; from: string }) {
   const [note, setNote] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -249,21 +239,20 @@ function ArrivalRow({ item, from }: { item: HistoryTopLevelItemViewModel; from: 
     try {
       if (action === 'copy') await appBridge.copyItem(item.itemId);
       else await appBridge.moveItem(item.itemId);
-      // Finder has no cut. A copied file moves only on Option-Command-V, so say
-      // which paste finishes the job rather than implying a plain paste.
+      // Finder has no cut: a copied file moves on Option-Command-V.
       setNote(action === 'copy'
-        ? isMacLike() ? 'Copied — press ⌘V where you want it' : 'Copied — paste where you want it'
-        : isMacLike() ? 'Ready to move — press ⌥⌘V where you want it' : 'Ready to move — paste where you want it');
+        ? isMacLike() ? 'Copied · ⌘V' : 'Copied'
+        : isMacLike() ? 'Ready · ⌥⌘V' : 'Ready to move');
     } catch {
       setFailed(true);
-      setNote(action === 'copy' ? 'Could not copy that file' : 'Could not prepare that file');
+      setNote(action === 'copy' ? 'Copy failed' : 'Move failed');
     } finally { setBusy(false); }
   }
 
   return (
     <span className="row arrival-row">
       <span className="name" title={`${item.displayName} · from ${from}`}>{item.displayName}</span>
-      <span className="size">{item.kind === 'directory' ? `${item.size} items` : formatBytes(item.size)}</span>
+      <span className="size">{formatItemSize(item)}</span>
       <span className="act">
         <button type="button" className="chip-mini" disabled={busy} onClick={() => { void put('copy'); }} aria-label={`Copy ${item.displayName}`}>COPY</button>
         <button type="button" className="chip-mini" disabled={busy} onClick={() => { void put('cut'); }} aria-label={`Cut ${item.displayName}`}>CUT</button>
