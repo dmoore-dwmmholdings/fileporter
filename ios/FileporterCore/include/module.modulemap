@@ -1,0 +1,4 @@
+module FileporterCore {
+    header "fileporter_core.h"
+    export *
+}

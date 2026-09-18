@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The same service the desktop app advertises and browses. -->
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_fileporter._tcp</string>
+		<!-- Used only by the UI tests, to stay isolated from real pads. -->
+		<string>_fileporter-uitest._tcp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Fileporter finds your other pads on this network and sends files straight to them.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Fileporter sends the photos and videos you pick to your other pads.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>IBMPlexSans-Light.ttf</string>
+		<string>IBMPlexSans-Regular.ttf</string>
+		<string>IBMPlexSans-Medium.ttf</string>
+		<string>IBMPlexMono-Regular.ttf</string>
+		<string>IBMPlexMono-Medium.ttf</string>
+	</array>
+	<!-- Arrivals land in Documents/Received, visible under On My iPhone in Files. -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+</dict>
+</plist>
