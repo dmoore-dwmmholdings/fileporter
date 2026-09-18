@@ -1,0 +1,218 @@
+{
+  "master_size": [
+    1254,
+    1254
+  ],
+  "master_opaque": true,
+  "png_exports": [
+    {
+      "file": "icons/png/fileporter-1024.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-120.png",
+      "size": [
+        120,
+        120
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-128.png",
+      "size": [
+        128,
+        128
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-152.png",
+      "size": [
+        152,
+        152
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-16.png",
+      "size": [
+        16,
+        16
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-167.png",
+      "size": [
+        167,
+        167
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-180.png",
+      "size": [
+        180,
+        180
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-192.png",
+      "size": [
+        192,
+        192
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-20.png",
+      "size": [
+        20,
+        20
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-24.png",
+      "size": [
+        24,
+        24
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-256.png",
+      "size": [
+        256,
+        256
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-29.png",
+      "size": [
+        29,
+        29
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-32.png",
+      "size": [
+        32,
+        32
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-40.png",
+      "size": [
+        40,
+        40
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-48.png",
+      "size": [
+        48,
+        48
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-512.png",
+      "size": [
+        512,
+        512
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-58.png",
+      "size": [
+        58,
+        58
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-60.png",
+      "size": [
+        60,
+        60
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-64.png",
+      "size": [
+        64,
+        64
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-76.png",
+      "size": [
+        76,
+        76
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-80.png",
+      "size": [
+        80,
+        80
+      ],
+      "opaque": true
+    },
+    {
+      "file": "icons/png/fileporter-87.png",
+      "size": [
+        87,
+        87
+      ],
+      "opaque": true
+    }
+  ],
+  "windows_ico_sizes": [
+    [
+      16,
+      16
+    ],
+    [
+      24,
+      24
+    ],
+    [
+      32,
+      32
+    ],
+    [
+      48,
+      48
+    ],
+    [
+      64,
+      64
+    ],
+    [
+      128,
+      128
+    ],
+    [
+      256,
+      256
+    ]
+  ],
+  "macos_icns_decoded": true,
+  "visual_review": "Icon, lockups and HTML guide inspected; smallest fold details soften at 16px.",
+  "app_build_tested": false
+}

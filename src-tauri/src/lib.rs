@@ -2,23 +2,29 @@
 mod app;
 #[cfg(feature = "desktop")]
 mod commands;
-#[cfg(any(feature = "desktop", test))]
+#[cfg(any(feature = "desktop", feature = "mobile", test))]
 mod desktop_actions;
-#[cfg(any(feature = "desktop", test))]
+#[cfg(any(feature = "desktop", feature = "mobile", test))]
 mod desktop_notifications;
-#[cfg(any(feature = "desktop", test))]
+#[cfg(any(feature = "desktop", feature = "mobile", test))]
 mod discovery;
+#[cfg(all(target_vendor = "apple", any(feature = "mobile", test)))]
+mod discovery_dnssd;
 mod engine;
 mod error;
 mod identity;
 mod lifecycle_monitor;
-#[cfg(any(feature = "desktop", test))]
+#[cfg(any(feature = "desktop", feature = "mobile", test))]
 mod listener_lifecycle;
-#[cfg(any(feature = "desktop", test))]
+#[cfg(any(feature = "desktop", feature = "mobile", test))]
 mod logging;
+#[cfg(feature = "mobile")]
+pub mod mobile;
 mod persistence;
 mod secret_store;
-#[cfg(any(feature = "desktop", test))]
+#[cfg(any(feature = "desktop", feature = "mobile", test))]
+mod settings_ops;
+#[cfg(any(feature = "desktop", feature = "mobile", test))]
 mod state;
 mod state_events;
 #[cfg(feature = "desktop")]

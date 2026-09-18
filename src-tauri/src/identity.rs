@@ -217,6 +217,17 @@ pub struct PairingCoordinator {
 }
 
 impl PairingCoordinator {
+    /// The persisted name of this device, falling back to a neutral label
+    /// before onboarding has named it.
+    pub(crate) fn local_device_name(&self) -> String {
+        self.repository
+            .load()
+            .ok()
+            .map(|settings| settings.device_name)
+            .filter(|name| !name.trim().is_empty())
+            .unwrap_or_else(|| "Fileporter device".to_owned())
+    }
+
     /// Public-only material suitable for LAN service metadata. The private
     /// identity key and certificate bytes remain inside this coordinator.
     #[cfg_attr(not(feature = "desktop"), allow(dead_code))] // Used by desktop listener/discovery startup only.
@@ -591,14 +602,14 @@ fn is_normalized_sas_code(value: &str) -> bool {
 fn invalid_pairing(field: &'static str) -> AppError {
     AppError::Validation {
         code: "invalid_pairing",
-        message: "The pairing request is invalid.",
+        message: "Invalid pairing",
         field: Some(field),
     }
 }
 fn pairing_not_found() -> AppError {
     AppError::Validation {
         code: "pairing_not_found",
-        message: "That pairing request is no longer available.",
+        message: "Pairing gone",
         field: Some("pairingId"),
     }
 }

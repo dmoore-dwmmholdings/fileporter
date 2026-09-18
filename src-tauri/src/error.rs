@@ -46,25 +46,25 @@ impl From<AppError> for AppErrorDto {
         match value {
             AppError::Database(_) => Self {
                 code: "internal".into(),
-                message: "Fileporter could not open its local settings.".into(),
+                message: "Settings unavailable".into(),
                 retryable: true,
                 field: None,
             },
             AppError::DataDirectoryUnavailable => Self {
                 code: "internal".into(),
-                message: "Fileporter could not find a local data directory.".into(),
+                message: "No data directory".into(),
                 retryable: false,
                 field: None,
             },
             AppError::MainWindowUnavailable => Self {
                 code: "internal".into(),
-                message: "Fileporter's main window is unavailable.".into(),
+                message: "No window".into(),
                 retryable: true,
                 field: None,
             },
             AppError::EventEmissionFailed => Self {
                 code: "internal".into(),
-                message: "Fileporter could not update the window state.".into(),
+                message: "Window failed".into(),
                 retryable: true,
                 field: None,
             },
@@ -80,37 +80,37 @@ impl From<AppError> for AppErrorDto {
             },
             AppError::DestinationUnwritable => Self {
                 code: "destination_unwritable".into(),
-                message: "Fileporter cannot create and write to that receive folder.".into(),
+                message: "Folder not writable".into(),
                 retryable: true,
                 field: Some("receiveDirectory".into()),
             },
             AppError::IdentityStorageInvalid => Self {
                 code: "identity_storage_invalid".into(),
-                message: "Fileporter could not read its local device identity.".into(),
+                message: "Identity unavailable".into(),
                 retryable: false,
                 field: None,
             },
             AppError::ListenerUnavailable => Self {
                 code: "listener_unavailable".into(),
-                message: "Fileporter could not start its local receiving listener.".into(),
+                message: "Listener failed".into(),
                 retryable: true,
                 field: Some("listenAddress".into()),
             },
             AppError::CompletedOutputUnavailable => Self {
                 code: "invalid_path".into(),
-                message: "That completed local item is no longer available.".into(),
+                message: "Item gone".into(),
                 retryable: false,
                 field: None,
             },
             AppError::DesktopActionFailed => Self {
                 code: "internal".into(),
-                message: "Fileporter could not complete the requested desktop action.".into(),
+                message: "Action failed".into(),
                 retryable: true,
                 field: None,
             },
             AppError::ClipboardBusy => Self {
                 code: "clipboard_busy".into(),
-                message: "Fileporter could not access the system clipboard. Close another clipboard app and try again.".into(),
+                message: "Clipboard busy".into(),
                 retryable: true,
                 field: None,
             },
@@ -130,7 +130,7 @@ mod tests {
     fn validation_preserves_only_the_stable_contract() {
         let dto: AppErrorDto = AppError::Validation {
             code: "invalid_path",
-            message: "Choose an existing file or folder.",
+            message: "File or folder not found",
             field: Some("paths"),
         }
         .into();

@@ -380,6 +380,11 @@ fn pairing_io(message: &'static str) -> ListenerError {
 }
 
 impl PairingService {
+    /// The name this pad announces while pairing: the one the user chose.
+    fn local_device_name(&self) -> String {
+        self.coordinator.local_device_name()
+    }
+
     async fn accept_authenticated_tls<S>(
         &self,
         mut tls: S,
@@ -484,7 +489,7 @@ impl PairingService {
             .map(|p| p.session_id)
             .ok_or(crate::error::AppError::Validation {
                 code: "pairing_not_found",
-                message: "That pairing request is no longer available.",
+                message: "Pairing gone",
                 field: Some("pairingId"),
             })
     }
@@ -2549,7 +2554,10 @@ async fn listener_loop(
         let receiver = receiver.clone();
         let receive_cancellation = connection_cancellation.clone();
         connection_tasks.spawn(async move {
-            let device_name = "Fileporter device".to_owned();
+            // Answer with the name this pad was given, as the initiating side
+            // does; a fixed placeholder here made every peer that paired by
+            // connecting in record this pad under the same generic name.
+            let device_name = pairing.local_device_name();
             tokio::select! {
                 _ = connection_cancellation.cancelled() => {},
                 _ = async move {
@@ -3544,6 +3552,13 @@ mod tests {
     fn pairing_test_engine_with_automatic(
         automatic_device_trust: bool,
     ) -> (Engine, Arc<crate::identity::PairingCoordinator>) {
+        pairing_test_engine_named(automatic_device_trust, "Right")
+    }
+
+    fn pairing_test_engine_named(
+        automatic_device_trust: bool,
+        device_name: &str,
+    ) -> (Engine, Arc<crate::identity::PairingCoordinator>) {
         let directory =
             std::env::temp_dir().join(format!("fileporter-engine-test-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&directory).unwrap();
@@ -3552,6 +3567,7 @@ mod tests {
         );
         let mut settings = repository.load().unwrap();
         settings.automatic_device_trust = automatic_device_trust;
+        settings.device_name = device_name.into();
         repository.save(&settings).unwrap();
         let pairing = Arc::new(crate::identity::PairingCoordinator::open(repository).unwrap());
         (Engine::new(pairing.clone()), pairing)
@@ -3702,6 +3718,9 @@ mod tests {
         assert_eq!(right_snapshot.trusted_devices.len(), 1);
         assert!(left_snapshot.trusted_devices[0].auto_send);
         assert!(right_snapshot.trusted_devices[0].auto_send);
+        // The listening side must announce its own name, not a placeholder.
+        assert_eq!(left_snapshot.trusted_devices[0].name, "Right");
+        assert_eq!(right_snapshot.trusted_devices[0].name, "Left");
         left.shutdown_listener().await;
         right.shutdown_listener().await;
     }

@@ -46,60 +46,57 @@ export function ConfigView({ snapshot, onSnapshot }: { snapshot: AppSnapshotView
   async function choose() {
     setError(null);
     try { const next = await appBridge.chooseReceiveDirectory(); if (next) setReceiveDirectory(next); }
-    catch { setError('Fileporter could not open the folder picker.'); }
+    catch { setError('Picker failed'); }
   }
 
   async function apply() {
-    if (!validListenAddress) { setError('Use a loopback or private address with a port up to 65535.'); return; }
+    if (!validListenAddress) { setError('Invalid address'); return; }
     setSaving(true); setError(null); setStatus(null);
     try {
       onSnapshot(await appBridge.updateSettings({
         deviceName: deviceName.trim(), receiveDirectory, receivingEnabled, listenAddress: trimmed,
         launchAtLogin, notificationsEnabled, automaticDeviceTrust, historyRetentionDays
       }));
-      setStatus('Applied.');
-    } catch { setError('Fileporter could not apply these changes. The last saved settings are still in use.'); }
+      setStatus('Applied');
+    } catch { setError('Apply failed'); }
     finally { setSaving(false); }
   }
 
   async function viewLogs() {
     setError(null);
-    try { await appBridge.viewLogs(); setStatus('Opened the log folder.'); }
-    catch { setError('Fileporter could not open its logs.'); }
+    try { await appBridge.viewLogs(); setStatus('Opened'); }
+    catch { setError('Could not open logs'); }
   }
 
-  const toggles: Array<{ key: string; label: string; note: string; value: boolean; set: (value: boolean) => void }> = [
-    { key: 'receive', label: 'Accept inbound transports', note: 'Turn off and this pad stays visible but reassembles nothing.', value: receivingEnabled, set: setReceivingEnabled },
-    { key: 'trust', label: 'Link authenticated pads automatically', note: 'Off requires a matching code on both pads before a link is kept.', value: automaticDeviceTrust, set: setAutomaticDeviceTrust },
-    { key: 'launch', label: 'Bring the pad online at sign-in', note: 'Fileporter runs in the tray so transports land while the window is closed.', value: launchAtLogin, set: setLaunchAtLogin },
-    { key: 'notify', label: 'Notify me when something arrives', note: 'A system notification naming what arrived and from which pad.', value: notificationsEnabled, set: setNotificationsEnabled }
+  const toggles: Array<{ key: string; label: string; value: boolean; set: (value: boolean) => void }> = [
+    { key: 'receive', label: 'Accept transports', value: receivingEnabled, set: setReceivingEnabled },
+    { key: 'trust', label: 'Link pads automatically', value: automaticDeviceTrust, set: setAutomaticDeviceTrust },
+    { key: 'launch', label: 'Start at sign-in', value: launchAtLogin, set: setLaunchAtLogin },
+    { key: 'notify', label: 'Notify on arrival', value: notificationsEnabled, set: setNotificationsEnabled }
   ];
 
   return (
     <>
       <Floor variant="faint" />
       <div className="q-body center scrolls">
-        <Headline title="This pad." sub="Changes apply together. The folder and the address are checked before anything is saved." id="config-heading" />
+        <Headline title="This pad" id="config-heading" />
 
         <div className="cfg-grid fade">
           <div className="cfg-col">
             <label className="cfg-field">
               <span className="lbl">Name other pads see</span>
               <input className="field" style={{ fontSize: 15 }} aria-label="Name other pads see" value={deviceName} maxLength={48} onChange={(event) => setDeviceName(event.target.value)} />
-              <span className="hint">
-                {snapshot.localDeviceId
-                  ? <>Identity <span className="mono" style={{ color: 'var(--acc)' }}>{shortId(snapshot.localDeviceId)}</span>, pinned by your other pads.</>
-                  : 'This is what your other pads will call it.'}
-              </span>
+              {snapshot.localDeviceId
+                ? <span className="hint mono" style={{ color: 'var(--acc)' }}>{shortId(snapshot.localDeviceId)}</span>
+                : null}
             </label>
 
             <div className="cfg-field">
               <label className="lbl" htmlFor="receive-directory">Where arrivals land</label>
               <span className="entry">
-                <input id="receive-directory" className="field mono" style={{ fontSize: 13.5 }} value={receiveDirectory} readOnly aria-describedby="receive-directory-help" />
+                <input id="receive-directory" className="field mono" style={{ fontSize: 13.5 }} value={receiveDirectory} readOnly />
                 <button type="button" className="chip" disabled={saving} onClick={() => { void choose(); }}>Choose</button>
               </span>
-              <span className="hint" id="receive-directory-help">Nothing is ever overwritten. A name that already exists lands beside it, numbered.</span>
             </div>
 
             <label className="cfg-field">
@@ -110,11 +107,9 @@ export function ConfigView({ snapshot, onSnapshot }: { snapshot: AppSnapshotView
                 value={listenAddress}
                 aria-label="Preferred listen address"
                 aria-invalid={!validListenAddress}
-                aria-describedby="listen-address-help"
                 placeholder="0.0.0.0:48721"
                 onChange={(event) => setListenAddress(event.target.value)}
               />
-              <span className="hint" id="listen-address-help">Loopback or private ranges only. Port 0 lets the system choose.</span>
             </label>
 
             <div className="cfg-field">
@@ -141,7 +136,6 @@ export function ConfigView({ snapshot, onSnapshot }: { snapshot: AppSnapshotView
                 <span className={toggle.value ? 'sw on' : 'sw'} aria-hidden="true"><i /></span>
                 <span className="tog-label">
                   <span>{toggle.label}</span>
-                  <span className="hint">{toggle.note}</span>
                 </span>
               </button>
             ))}
@@ -164,7 +158,7 @@ export function ConfigView({ snapshot, onSnapshot }: { snapshot: AppSnapshotView
         {error
           ? <span className="err" role="alert">{error}</span>
           : <span style={{ fontSize: 12.5, color: dirty ? 'var(--hold)' : 'var(--dimmer)' }} role="status">
-            {dirty ? 'Not applied yet' : status ?? 'Everything here is in use'}
+            {dirty ? 'Unsaved' : status ?? ''}
           </span>}
         <button type="button" className="chip" disabled={saving || !dirty} onClick={discard}>Discard</button>
         <button
@@ -193,12 +187,12 @@ function Diagnostics({ snapshot }: { snapshot: AppSnapshotViewModel }) {
         <summary>Network diagnostics</summary>
         <dl>
           <dt>Listener</dt><dd>{snapshot.network.listening ? 'Listening' : 'Stopped'}</dd>
-          <dt>Bound endpoint</dt><dd>{snapshot.network.boundEndpoint ?? 'Not currently bound'}</dd>
+          <dt>Bound endpoint</dt><dd>{snapshot.network.boundEndpoint ?? '—'}</dd>
           <dt>Preferred endpoint</dt><dd>{snapshot.network.preferredListenAddress}</dd>
-          <dt>mDNS</dt><dd>{snapshot.network.mdnsState || 'State unavailable.'}</dd>
-          <dt>Interfaces</dt><dd>{snapshot.network.localInterfaceSummaries.length ? snapshot.network.localInterfaceSummaries.join(', ') : 'No active local interfaces reported.'}</dd>
-          <dt>Trusted online endpoints</dt><dd>{snapshot.network.trustedOnlineEndpoints.length ? snapshot.network.trustedOnlineEndpoints.join(', ') : 'No trusted peer is currently online.'}</dd>
-          <dt>Recent stable errors</dt><dd>{snapshot.network.recentErrorCodes.length ? snapshot.network.recentErrorCodes.join(', ') : 'None reported.'}</dd>
+          <dt>mDNS</dt><dd>{snapshot.network.mdnsState || '—'}</dd>
+          <dt>Interfaces</dt><dd>{snapshot.network.localInterfaceSummaries.join(', ') || '—'}</dd>
+          <dt>Trusted online endpoints</dt><dd>{snapshot.network.trustedOnlineEndpoints.join(', ') || '—'}</dd>
+          <dt>Recent stable errors</dt><dd>{snapshot.network.recentErrorCodes.join(', ') || '—'}</dd>
         </dl>
       </details>
       <details className="diag">

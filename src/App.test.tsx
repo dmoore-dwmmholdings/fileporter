@@ -40,7 +40,7 @@ it('hydrates the screen from the Tauri snapshot', async () => {
   vi.spyOn(appBridge, 'getAppSnapshot').mockResolvedValue(readySnapshot);
   render(<App />);
   expect(await screen.findByText('Desk')).toBeVisible();
-  expect(screen.getByRole('heading', { name: 'Drop anything.' })).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Drop anything' })).toBeVisible();
 });
 
 it('navigates the browse menu with arrows and restores focus without opening a picker', async () => {
@@ -85,7 +85,7 @@ it('labels adjacent fields and actions independently for native WebKit', async (
   vi.spyOn(appBridge, 'getAppSnapshot').mockResolvedValue(readySnapshot);
   render(<App />);
   fireEvent.click(await screen.findByRole('button', { name: 'Pads' }));
-  const endpoint = screen.getByRole<HTMLInputElement>('textbox', { name: 'Add a pad by address' });
+  const endpoint = screen.getByRole<HTMLInputElement>('textbox', { name: 'Add by address' });
   const add = screen.getByRole('button', { name: 'Add' });
   expect(endpoint.labels).toHaveLength(1);
   expect(add.closest('label')).toBeNull();
@@ -93,15 +93,14 @@ it('labels adjacent fields and actions independently for native WebKit', async (
   const directory = screen.getByRole('textbox', { name: 'Where arrivals land' });
   const choose = screen.getByRole('button', { name: 'Choose' });
   expect(directory).toHaveAttribute('readonly');
-  expect(directory).toHaveAccessibleDescription(/Nothing is ever overwritten/);
   expect(choose.closest('label')).toBeNull();
-  expect(screen.getByRole('textbox', { name: 'Preferred listen address' })).toHaveAccessibleDescription(/Port 0/);
+  expect(screen.getByRole('textbox', { name: 'Preferred listen address' }).closest('label')).not.toBeNull();
 });
 
 it('shows an actionable error when snapshot loading fails', async () => {
   vi.spyOn(appBridge, 'getAppSnapshot').mockRejectedValue(new Error('offline'));
   render(<App />);
-  expect(await screen.findByRole('alert')).toHaveTextContent('Fileporter couldn’t load.');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t load');
   expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible();
 });
 
@@ -115,7 +114,7 @@ it('sends to a pad that only comes online after launch, without asking first', a
   vi.spyOn(appBridge, 'chooseFiles').mockResolvedValue(['C:\\report.pdf']);
   const enqueue = vi.spyOn(appBridge, 'enqueuePaths').mockResolvedValue({ id: 'batch-1', itemCount: 1, targetDeviceIds: ['peer-1'], state: 'queued', waitingForAvailable: false });
   render(<App />);
-  expect(await screen.findByText('No pad linked')).toBeVisible();
+  expect((await screen.findAllByText('No pads'))[0]).toBeVisible();
 
   await act(async () => {
     receiveSnapshot?.({
@@ -165,7 +164,7 @@ it('opens Config from the tray navigation event', async () => {
   render(<App />);
   await screen.findByText('Desk');
   act(() => { navigate?.('settings'); });
-  expect(await screen.findByRole('heading', { name: 'This pad.' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'This pad' })).toBeVisible();
   await waitFor(() => expect(screen.getByRole('button', { name: 'Config' })).toHaveFocus());
 });
 
@@ -174,7 +173,7 @@ it('validates first run, chooses a folder, and completes setup', async () => {
   const choose = vi.spyOn(appBridge, 'chooseDirectory').mockResolvedValue(['C:\\Incoming']);
   const complete = vi.spyOn(appBridge, 'completeOnboarding').mockResolvedValue({ ...readySnapshot, revision: 3, localDeviceName: 'Studio Mac', settings: { ...readySnapshot.settings, deviceName: 'Studio Mac', receiveDirectory: 'C:\\Incoming' } });
   render(<App />);
-  expect(await screen.findByRole('heading', { name: 'Set up this pad.' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Set up this pad' })).toBeVisible();
   expect(screen.getByRole('button', { name: 'Bring this pad online' })).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Name this pad'), { target: { value: 'Studio Mac' } });
   fireEvent.click(screen.getByRole('button', { name: 'Choose' }));
@@ -246,12 +245,12 @@ it('queues a drop aimed at a dark pad rather than refusing it', async () => {
   await waitFor(() => expect(receiveDrop).toBeTypeOf('function'));
   act(() => { receiveDrop?.({ paths: ['C:\\drop\\photo.jpg'] }); });
   // Nothing is selected, so the payload stages on the deck and waits.
-  expect(await screen.findByText(/a dark one holds them until it wakes/)).toBeVisible();
+  expect((await screen.findAllByText(/Pick a pad/))[0]).toBeVisible();
   expect(enqueue).not.toHaveBeenCalled();
 
   fireEvent.click(chip);
   await waitFor(() => expect(enqueue).toHaveBeenCalledWith(['C:\\drop\\photo.jpg'], ['laptop'], true));
-  expect(await screen.findByText(/Holding 1 item until that pad wakes/)).toBeVisible();
+  expect(await screen.findByText(/Held · 1 item/)).toBeVisible();
 });
 
 it('stages picker paths when no pad is selected', async () => {
@@ -263,7 +262,7 @@ it('stages picker paths when no pad is selected', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Send files or folders' }));
   fireEvent.click(screen.getByRole('menuitem', { name: 'Browse files' }));
   await waitFor(() => expect(chooseFiles).toHaveBeenCalledOnce());
-  expect(await screen.findByText(/Pick a pad for these/)).toBeVisible();
+  expect((await screen.findAllByText(/Pick a pad/))[0]).toBeVisible();
   expect(enqueue).not.toHaveBeenCalled();
   // The staged payload is visible on the deck rather than silently held.
   expect(screen.getByText('report.pdf')).toBeVisible();
@@ -309,10 +308,10 @@ it('applies every editable Config field through the supported patch DTO', async 
   fireEvent.change(screen.getByLabelText('Name other pads see'), { target: { value: 'Studio' } });
   fireEvent.click(screen.getByRole('button', { name: 'Choose' }));
   await waitFor(() => expect(screen.getByDisplayValue('C:\\Incoming')).toBeVisible());
-  fireEvent.click(screen.getByRole('switch', { name: 'Accept inbound transports' }));
-  fireEvent.click(screen.getByRole('switch', { name: 'Bring the pad online at sign-in' }));
-  fireEvent.click(screen.getByRole('switch', { name: 'Notify me when something arrives' }));
-  fireEvent.click(screen.getByRole('switch', { name: 'Link authenticated pads automatically' }));
+  fireEvent.click(screen.getByRole('switch', { name: 'Accept transports' }));
+  fireEvent.click(screen.getByRole('switch', { name: 'Start at sign-in' }));
+  fireEvent.click(screen.getByRole('switch', { name: 'Notify on arrival' }));
+  fireEvent.click(screen.getByRole('switch', { name: 'Link pads automatically' }));
   fireEvent.click(screen.getByRole('button', { name: '90 days' }));
   fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
   await waitFor(() => expect(update).toHaveBeenCalledWith({
@@ -326,11 +325,10 @@ it('keeps Apply inert until something actually changed, and restores on Discard'
   render(<App />);
   fireEvent.click(await screen.findByRole('button', { name: 'Config' }));
   expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled();
-  expect(screen.getByText('Everything here is in use')).toBeVisible();
 
   fireEvent.change(screen.getByLabelText('Name other pads see'), { target: { value: 'Studio' } });
   expect(screen.getByRole('button', { name: 'Apply' })).toBeEnabled();
-  expect(screen.getByText('Not applied yet')).toBeVisible();
+  expect(screen.getByText('Unsaved')).toBeVisible();
 
   fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
   expect(screen.getByLabelText('Name other pads see')).toHaveValue('Desk');

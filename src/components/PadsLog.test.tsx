@@ -55,7 +55,7 @@ it('shows automatic discovery as progress, with no link button', async () => {
   });
   render(<App />);
   await openPads();
-  expect(await screen.findByRole('status')).toHaveTextContent('proving identity');
+  expect(await screen.findByRole('status')).toHaveTextContent('proving');
   expect(screen.queryByRole('button', { name: 'LINK' })).not.toBeInTheDocument();
 });
 
@@ -77,7 +77,7 @@ it('keeps confirmation disabled until the backend supplies a matching code', asy
   render(<App />);
   await openPads();
   expect(await screen.findByRole('button', { name: 'Confirm link' })).toBeDisabled();
-  expect(screen.getByRole('status')).toHaveTextContent('Waiting for a matching code');
+  expect(screen.getByRole('status')).toHaveTextContent('No code yet');
   const reject = screen.getByRole('button', { name: 'Reject' });
   expect(reject).toHaveFocus();
   fireEvent.keyDown(reject, { key: 'Tab' });
@@ -91,10 +91,10 @@ it('adds a pad at the exact address typed, and reports failure accessibly', asyn
   const start = vi.spyOn(appBridge, 'startPairingAtEndpoint').mockRejectedValue(new Error('unreachable'));
   render(<App />);
   await openPads();
-  fireEvent.change(screen.getByLabelText('Add a pad by address'), { target: { value: '192.168.1.24:48721' } });
+  fireEvent.change(screen.getByLabelText('Add by address'), { target: { value: '192.168.1.24:48721' } });
   fireEvent.click(screen.getByRole('button', { name: 'Add' }));
   await waitFor(() => expect(start).toHaveBeenCalledWith('192.168.1.24:48721'));
-  expect(await screen.findByRole('alert')).toHaveTextContent('could not reach a pad at that address');
+  expect(await screen.findByRole('alert')).toHaveTextContent('No pad at that address');
 });
 
 it('renames a linked pad locally by its stored device id', async () => {
@@ -130,7 +130,7 @@ it('discards a pattern held for a dark pad by its batch id', async () => {
   const cancel = vi.spyOn(appBridge, 'cancelBatch').mockResolvedValue({ ...base, revision: 5 });
   render(<App />);
   await openPads();
-  expect(await screen.findByText('held for Laptop')).toBeVisible();
+  expect(await screen.findByText('held · Laptop')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'DISCARD' }));
   await waitFor(() => expect(cancel).toHaveBeenCalledWith('queued-1'));
 });
@@ -185,7 +185,7 @@ it('acts on a whole arrival with its batch id and reports the outcome accessibly
   fireEvent.click(await screen.findByRole('button', { name: /Received/ }));
   fireEvent.click(screen.getByRole('button', { name: 'MOVE ALL' }));
   await waitFor(() => expect(move).toHaveBeenCalledWith('batch-1'));
-  expect(await screen.findByText(/staged to move/)).toBeVisible();
+  expect(await screen.findByText(/Ready to move/)).toBeVisible();
 });
 
 it('reports a clipboard failure instead of implying the files are ready', async () => {
@@ -199,7 +199,7 @@ it('reports a clipboard failure instead of implying the files are ready', async 
   await openLog();
   fireEvent.click(await screen.findByRole('button', { name: /Received/ }));
   fireEvent.click(screen.getByRole('button', { name: 'COPY ALL' }));
-  expect(await screen.findByText(/could not copy the arrived files/)).toBeVisible();
+  expect(await screen.findByText(/copy failed/)).toBeVisible();
 });
 
 it('does not open a record that has nothing landed to act on', async () => {
@@ -238,7 +238,7 @@ it('reports a clipboard failure rather than implying the file is ready to paste'
   vi.spyOn(appBridge, 'copyItem').mockRejectedValue(new Error('clipboard unavailable'));
   render(<App />);
   fireEvent.click(await screen.findByRole('button', { name: 'Copy photo.jpg' }));
-  expect(await screen.findByText('Could not copy that file')).toBeVisible();
+  expect(await screen.findByText('Copy failed')).toBeVisible();
 });
 
 it('labels the arrivals strip so a bare file name is not left to explain itself', async () => {
@@ -253,7 +253,7 @@ it('offers no arrival actions for an output that is no longer on disk', async ()
   const history = [received([{ itemId: 'item-1', displayName: 'gone.txt', kind: 'file', size: 10, state: 'complete' as const, available: false }])];
   vi.spyOn(appBridge, 'getAppSnapshot').mockResolvedValue({ ...base, history });
   render(<App />);
-  await screen.findByRole('heading', { name: 'Drop anything.' });
+  await screen.findByRole('heading', { name: 'Drop anything' });
   expect(screen.queryByRole('button', { name: /Copy gone.txt/ })).not.toBeInTheDocument();
 });
 
@@ -264,6 +264,6 @@ it('does not show an incoming item that has not finished', async () => {
   }];
   vi.spyOn(appBridge, 'getAppSnapshot').mockResolvedValue({ ...base, history });
   render(<App />);
-  await screen.findByRole('heading', { name: 'Drop anything.' });
+  await screen.findByRole('heading', { name: 'Drop anything' });
   expect(screen.queryByRole('button', { name: /Copy big.iso/ })).not.toBeInTheDocument();
 });

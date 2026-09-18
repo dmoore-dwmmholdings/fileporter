@@ -90,7 +90,7 @@ export default function App({ initialSnapshot = emptySnapshot }: FileporterAppPr
   const submitPaths = useCallback(async (paths: string[], targetDeviceIds = [...selectedIdsRef.current]) => {
     if (targetDeviceIds.length === 0) {
       setStagedPaths(paths);
-      setNotice({ message: 'Pick a pad for these — a dark one holds them until it wakes.' });
+      setNotice({ message: 'Pick a pad' });
       return;
     }
     // A dark pad is a legitimate destination: the batch is queued rather than
@@ -101,13 +101,11 @@ export default function App({ initialSnapshot = emptySnapshot }: FileporterAppPr
       const queued = await appBridge.enqueuePaths(paths, targetDeviceIds, queueOffline);
       setStagedPaths([]);
       setNotice({
-        message: queueOffline
-          ? `Holding ${queued.itemCount} item${queued.itemCount === 1 ? '' : 's'} until that pad wakes.`
-          : `Preparing ${queued.itemCount} item${queued.itemCount === 1 ? '' : 's'} for transport.`,
+        message: `${queueOffline ? 'Held' : 'Sending'} · ${queued.itemCount} item${queued.itemCount === 1 ? '' : 's'}`,
         batchId: queued.id
       });
     } catch {
-      setNotice({ message: 'Fileporter could not start that transport. Your files remain where they are.', bad: true });
+      setNotice({ message: 'Send failed', bad: true });
     }
   }, []);
 
@@ -116,7 +114,7 @@ export default function App({ initialSnapshot = emptySnapshot }: FileporterAppPr
       const paths = choice === 'files' ? await appBridge.chooseFiles() : await appBridge.chooseDirectory();
       if (paths.length) await submitPaths(paths);
     } catch {
-      setNotice({ message: 'The picker could not open. Try again, or drag items onto the pad.', bad: true });
+      setNotice({ message: 'Picker failed', bad: true });
     }
   }, [submitPaths]);
 
@@ -150,7 +148,7 @@ export default function App({ initialSnapshot = emptySnapshot }: FileporterAppPr
     const batchId = notice.batchId;
     setNotice(null);
     try { await appBridge.cancelBatch(batchId); }
-    catch { setNotice({ message: 'Fileporter could not cancel that transport.', bad: true }); }
+    catch { setNotice({ message: 'Cancel failed', bad: true }); }
   }
 
   const online = useMemo(() => snapshot.devices.filter((device) => device.state === 'online').length, [snapshot]);
@@ -166,12 +164,12 @@ export default function App({ initialSnapshot = emptySnapshot }: FileporterAppPr
     + `${online} of ${linkedCount} linked pad${linkedCount === 1 ? '' : 's'} online; `
     + `${active.length} transport${active.length === 1 ? '' : 's'} in flight.`;
 
-  if (loadState === 'loading') return <main className="q"><div className="q-shell-message" aria-live="polite">Waking the pad…</div></main>;
+  if (loadState === 'loading') return <main className="q"><div className="q-shell-message" aria-live="polite">Loading…</div></main>;
   if (loadState === 'error') {
     return (
       <main className="q">
         <div className="q-shell-message" role="alert">
-          <strong>Fileporter couldn’t load.</strong>
+          <strong>Couldn’t load</strong>
           <button type="button" className="chip" onClick={() => { void hydrate(); }}>Try again</button>
         </div>
       </main>

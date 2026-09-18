@@ -61,3 +61,6 @@ Thumbs.db
 
 # Docwalk local capture sessions
 .docwalk/
+
+# Icon exports duplicated from branding/fileporter-file-portal/icons/png.
+output/

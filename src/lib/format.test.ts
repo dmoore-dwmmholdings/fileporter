@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatBytes, formatKind, formatPeer, formatWhen } from './format';
+import { formatBytes, formatKind, formatPeer, formatWhen, formatItemSize } from './format';
 import type { TrustedDeviceViewModel } from '../types/view-models';
 
 const at = (iso: string) => new Date(iso).getTime();
@@ -75,5 +75,18 @@ describe('formatKind', () => {
     expect(formatKind('LICENSE', 'file')).toBe('File');
     expect(formatKind('trailing.', 'file')).toBe('File');
     expect(formatKind('.gitignore', 'file')).toBe('File');
+  });
+});
+
+describe('formatItemSize', () => {
+  it('reads a folder as what it holds, not as bytes it does not have', () => {
+    // A folder row carries no bytes of its own: a Live Photo sent from a
+    // phone arrives as a package of three files and used to read "0 items".
+    expect(formatItemSize({ kind: 'directory', size: 6749517, itemCount: 3 })).toBe('3 files · 6.7 MB');
+    expect(formatItemSize({ kind: 'directory', size: 0, itemCount: 1 })).toBe('1 file');
+    expect(formatItemSize({ kind: 'directory', size: 0 })).toBe('0 files');
+  });
+  it('reads a file as its size', () => {
+    expect(formatItemSize({ kind: 'file', size: 2048 })).toBe('2.0 KB');
   });
 });

@@ -1,15 +1,11 @@
 import type { ReactNode } from 'react';
+import brandMark from '../assets/brand-mark.png';
 
 export type Screen = 'transport' | 'pads' | 'log' | 'config';
 
-/** The pad-and-beam glyph the design uses as the mark on every screen. */
+/** The brand mark, from the branding kit's symbol. */
 export function BrandMark({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="var(--acc)" strokeWidth="1.2" aria-hidden="true">
-      <ellipse cx="10" cy="15" rx="8" ry="3" />
-      <path d="M10 12V2m0 0L6.5 5.5M10 2l3.5 3.5" />
-    </svg>
-  );
+  return <img className="brand-mark" src={brandMark} alt="" height={size} />;
 }
 
 const TABS: Array<{ id: Screen; label: string }> = [

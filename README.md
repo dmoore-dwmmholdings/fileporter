@@ -48,6 +48,19 @@ let them discover each other, transfer files and directories, close both main wi
 receiving, then repeat through the manual private `host:port` route with multicast
 disabled. Those physical tests are not replaced by loopback coverage.
 
+## Brand assets
+
+`branding/fileporter-file-portal` is the branding kit and the source of truth
+for the identity. Regenerate everything the apps ship from it:
+
+```sh
+swift scripts/brand-assets.swift .
+```
+
+It trims the kit symbol into the in-app mark for both apps, resamples the icon
+master into the sizes Tauri bundles, and copies the kit's own `.icns`, `.ico`
+and web icons. The kit is raster, so nothing here redraws the artwork.
+
 ## Build and local-network troubleshooting
 
 Windows development and unsigned package build:

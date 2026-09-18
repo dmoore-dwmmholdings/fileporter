@@ -97,10 +97,24 @@ a:hover { color: #a8f5c6; }
   position: absolute; left: 0; right: 0; bottom: 0; height: 240px;
   pointer-events: none; opacity: 0.75;
   transition: opacity 220ms ease;
-  background: radial-gradient(64% 100% at 50% 126%, rgba(var(--acc-rgb), 0.13), transparent 72%);
+  /* Stops that taper to nothing: a single stop to `transparent` leaves a ring
+     where the gradient ends, which is obvious on a black ground. */
+  background: radial-gradient(
+    64% 100% at 50% 126%,
+    rgba(var(--acc-rgb), 0.15) 0%,
+    rgba(var(--acc-rgb), 0.06) 42%,
+    rgba(var(--acc-rgb), 0.015) 70%,
+    transparent 100%);
 }
 .q-floor.floor-tall { height: 300px; }
-.q-floor.floor-faint { background: radial-gradient(64% 100% at 50% 130%, rgba(var(--acc-rgb), 0.09), transparent 72%); }
+.q-floor.floor-faint {
+  background: radial-gradient(
+    64% 100% at 50% 130%,
+    rgba(var(--acc-rgb), 0.1) 0%,
+    rgba(var(--acc-rgb), 0.04) 42%,
+    rgba(var(--acc-rgb), 0.01) 70%,
+    transparent 100%);
+}
 
 .q-header {
   position: relative; z-index: 4; flex-shrink: 0;
@@ -109,6 +123,7 @@ a:hover { color: #a8f5c6; }
   padding: 22px 28px;
 }
 .q-brand { display: flex; align-items: center; gap: 9px; }
+.brand-mark { width: auto; display: block; }
 .q-brand > span { font-size: 13px; font-weight: 500; letter-spacing: -0.01em; color: var(--ink); }
 
 .q-nav { display: flex; gap: 20px; }
@@ -297,39 +312,45 @@ a:hover { color: #a8f5c6; }
 .rig-glow {
   position: absolute; left: -34%; right: -34%; top: 6%; bottom: -46%;
   pointer-events: none; z-index: -1;
-  background: radial-gradient(50% 54% at 50% 50%, rgba(var(--acc-rgb), 0.15), transparent 72%);
+  background: radial-gradient(
+    56% 60% at 50% 50%,
+    rgba(var(--acc-rgb), 0.2) 0%,
+    rgba(var(--acc-rgb), 0.07) 38%,
+    rgba(var(--acc-rgb), 0.02) 66%,
+    transparent 100%);
   transition: opacity 220ms ease;
 }
 .drag .rig-glow, .ph-go .rig-glow { opacity: 1.6; }
 
-/* Beams stand on the pad's core and rise from it, in the pad's own proportions. */
+/* The light stands on the pad's core and narrows into it. Clipping to a taper
+   and blurring the result keeps it from reading as a rectangular asset; the
+   iOS app draws the same shape slice by slice. */
 .beam {
   position: absolute; left: 50%; bottom: 49.47%;
-  height: 211%; pointer-events: none;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 28%, #000 72%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 28%, #000 72%, transparent);
+  height: 230%; pointer-events: none;
+  clip-path: polygon(16% 0%, 84% 0%, 57% 100%, 43% 100%);
+  transition: opacity 220ms ease;
 }
 .beam-o {
-  width: 50%; margin-left: -25%; opacity: 0.3; filter: blur(22px);
-  background: linear-gradient(180deg, rgba(var(--acc-rgb), 0), rgba(var(--acc-rgb), 0.4));
-  transition: opacity 220ms ease;
+  width: 96%; margin-left: -48%; opacity: 0.5; filter: blur(26px);
+  background: linear-gradient(180deg, rgba(var(--acc-rgb), 0) 0%, rgba(var(--acc-rgb), 0.12) 55%, rgba(var(--acc-rgb), 0.34) 100%);
 }
 .beam-m {
-  width: 22%; margin-left: -11%; opacity: 0.3; overflow: hidden;
-  background: linear-gradient(180deg, rgba(var(--acc-rgb), 0), rgba(var(--acc-rgb), 0.26));
-  transition: opacity 220ms ease;
+  width: 96%; margin-left: -48%; opacity: 0.55; overflow: hidden; filter: blur(9px);
+  background: linear-gradient(180deg, rgba(var(--acc-rgb), 0) 0%, rgba(var(--acc-rgb), 0.06) 55%, rgba(var(--acc-rgb), 0.18) 100%);
 }
+/* The lines fall with the taper, fading in as they go. */
 .beam-m::after {
   content: ''; position: absolute; inset: -30px 0;
-  background: repeating-linear-gradient(180deg, rgba(190, 255, 215, 0.07) 0 1.5px, transparent 1.5px 26px);
-  -webkit-mask-image: linear-gradient(180deg, transparent, #000 55%);
-  mask-image: linear-gradient(180deg, transparent, #000 55%);
+  background: repeating-linear-gradient(180deg, rgba(205, 255, 225, 0.22) 0 1.4px, transparent 1.4px 26px);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 70%);
+  mask-image: linear-gradient(180deg, transparent, #000 70%);
   animation: flow 3.1s linear infinite;
 }
 @keyframes flow { to { transform: translateY(27.5px); } }
 
-.q-stage-area:hover .beam-o { opacity: 0.46; }
-.q-stage-area:hover .beam-m { opacity: 0.46; }
+.q-stage-area:hover .beam-o { opacity: 0.7; }
+.q-stage-area:hover .beam-m { opacity: 0.75; }
 .q-stage-area:hover .beam-m::after { animation-duration: 1.3s; }
 
 /* The landing ring is centred on the same core the beam stands on. */
@@ -352,14 +373,14 @@ a:hover { color: #a8f5c6; }
 .ph-go .p2 { animation-delay: 180ms; }
 .ph-go .p3 { animation-delay: 360ms; }
 @keyframes ride { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
-.ph-go .beam-o { opacity: 0.6; }
-.ph-go .beam-m { opacity: 0.62; }
+.ph-go .beam-o { opacity: 0.95; }
+.ph-go .beam-m { opacity: 1; }
 .ph-go .beam-m::after { animation-duration: 0.34s; }
 .ph-go .pad-core, .ph-done .pad-core { animation-duration: 0.5s; }
 
 /* Dragging over the stage arms the field. */
-.drag .beam-o { opacity: 0.62; }
-.drag .beam-m { opacity: 0.6; }
+.drag .beam-o { opacity: 0.95; }
+.drag .beam-m { opacity: 1; }
 .drag .beam-m::after { animation-duration: 1s; }
 .drag .pad-core { animation-duration: 1s; }
 .drag .pkt { transform: translateY(-10px); }

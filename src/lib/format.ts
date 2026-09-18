@@ -77,6 +77,16 @@ const KNOWN_TYPES: Record<string, string> = {
   app: 'Application', json: 'JSON', xml: 'XML', html: 'HTML',
 };
 
+/**
+ * A folder reads as what it holds and how big it is; a file as its size. A
+ * folder row carries no bytes of its own, so size alone would read as empty.
+ */
+export function formatItemSize(item: { kind: string; size: number; itemCount?: number }): string {
+  if (item.kind !== 'directory') return formatBytes(item.size);
+  const files = `${item.itemCount ?? 0} file${item.itemCount === 1 ? '' : 's'}`;
+  return item.size > 0 ? `${files} · ${formatBytes(item.size)}` : files;
+}
+
 /** A human label for what arrived, falling back to the bare extension. */
 export function formatKind(displayName: string, kind: string): string {
   if (kind === 'directory') return 'Folder';

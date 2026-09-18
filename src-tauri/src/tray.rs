@@ -236,6 +236,7 @@ mod tests {
                     display_name: name.into(),
                     kind: "file".into(),
                     size: 0,
+                    item_count: None,
                     state: "completed".into(),
                     available,
                     destination_label: None,

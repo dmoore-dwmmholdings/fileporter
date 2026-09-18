@@ -177,7 +177,12 @@ pub struct HistoryTopLevelItemViewModel {
     pub item_id: String,
     pub display_name: String,
     pub kind: String,
+    /// Bytes: for a folder, everything inside it.
     pub size: i64,
+    /// Files inside a folder. A folder's own row carries no bytes of its own,
+    /// so without this it reads as empty.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub item_count: Option<i64>,
     pub state: String,
     pub available: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -210,7 +215,7 @@ impl AppState {
         let candidate = self.discovery.candidate(device_id).ok_or_else(|| {
             crate::error::AppError::Validation {
                 code: "nearby_device_not_found",
-                message: "That nearby device is no longer available.",
+                message: "Device gone",
                 field: Some("deviceId"),
             }
         })?;
@@ -230,14 +235,14 @@ impl AppState {
         if alias.is_empty() || alias.chars().count() > 128 {
             return Err(crate::error::AppError::Validation {
                 code: "invalid_device_alias",
-                message: "Choose a device name up to 128 characters.",
+                message: "Name must be 1–128 characters",
                 field: Some("alias"),
             });
         }
         let mut peer = self.settings.trusted_peer(device_id)?.ok_or_else(|| {
             crate::error::AppError::Validation {
                 code: "device_not_found",
-                message: "That trusted device is no longer available.",
+                message: "Pad gone",
                 field: Some("deviceId"),
             }
         })?;
@@ -265,9 +270,15 @@ impl AppState {
             events.clone(),
         ));
         engine.reconcile_receiver_startup()?;
-        let discovery = Arc::new(DiscoveryCoordinator::new(Box::new(
-            MdnsDiscoveryAdapter::new(),
-        )));
+        // iOS denies apps the raw multicast sockets `mdns-sd` needs; the
+        // system responder publishes identical records there.
+        #[cfg(all(target_os = "ios", feature = "mobile"))]
+        let adapter: Box<dyn crate::discovery::DiscoveryAdapter> =
+            Box::new(crate::discovery_dnssd::DnsSdDiscoveryAdapter::new());
+        #[cfg(not(all(target_os = "ios", feature = "mobile")))]
+        let adapter: Box<dyn crate::discovery::DiscoveryAdapter> =
+            Box::new(MdnsDiscoveryAdapter::new());
+        let discovery = Arc::new(DiscoveryCoordinator::new(adapter));
         // Multicast is answered by every member of the group including this
         // one. Teach discovery its own identity before it ever browses.
         let (local_device_id, _) = pairing.discovery_identity();
@@ -549,8 +560,15 @@ impl AppState {
                 tokio::time::sleep(std::time::Duration::from_millis(250)).await;
                 continue;
             }
+            let generation = self.discovery.generation();
             for device_id in self.discovery.refresh(&self.settings, unix_now()) {
                 let _ = self.wake_waiting_peer(&device_id);
+            }
+            if self.discovery.generation() != generation {
+                // A pad came online, went dark, or appeared nearby. No durable
+                // state moved, so without this the UI would not hear of it.
+                self.bump_revision();
+                self.events.emit(StateEventKind::Progress);
             }
             self.start_automatic_pairings();
             if last_probe.elapsed() >= PRESENCE_PROBE_EVERY {
@@ -922,7 +940,7 @@ impl AppState {
             .find(|record| record.batch.id == batch_id)
             .ok_or(crate::error::AppError::Validation {
                 code: "batch_not_found",
-                message: "That transfer is no longer available.",
+                message: "Transfer gone",
                 field: Some("batchId"),
             })?;
         if !matches!(record.batch.state.as_str(), "failed" | "cancelled") {
@@ -957,7 +975,7 @@ impl AppState {
             .find(|record| record.batch.id == batch_id)
             .ok_or(crate::error::AppError::Validation {
                 code: "batch_not_found",
-                message: "That transfer is no longer available.",
+                message: "Transfer gone",
                 field: Some("batchId"),
             })?;
         if record.batch.state == "completed" {
@@ -980,6 +998,10 @@ impl AppState {
         self.bump_revision();
         Ok(())
     }
+    #[cfg_attr(not(feature = "mobile"), allow(dead_code))] // The iOS bridge reports it with each change.
+    pub fn revision(&self) -> u64 {
+        self.revision.load(Ordering::Relaxed)
+    }
     pub fn bump_revision(&self) {
         self.revision.fetch_add(1, Ordering::SeqCst);
     }
@@ -996,7 +1018,7 @@ impl AppState {
         if manifest.entries.is_empty() {
             return Err(crate::error::AppError::Validation {
                 code: "unsupported_entry",
-                message: "Choose at least one regular file or folder.",
+                message: "Nothing selected",
                 field: Some("paths"),
             });
         }
@@ -1040,7 +1062,7 @@ impl AppState {
                     size: i64::try_from(entry.size).map_err(|_| {
                         crate::error::AppError::Validation {
                             code: "manifest_limit",
-                            message: "Selected files exceed Fileporter's supported size.",
+                            message: "Too large",
                             field: Some("paths"),
                         }
                     })?,
@@ -1075,7 +1097,7 @@ impl AppState {
             total_bytes: i64::try_from(manifest.total_logical_bytes).map_err(|_| {
                 crate::error::AppError::Validation {
                     code: "manifest_limit",
-                    message: "Selected files exceed Fileporter's supported size.",
+                    message: "Too large",
                     field: Some("paths"),
                 }
             })?,
@@ -1108,7 +1130,7 @@ impl AppState {
             .find(|record| record.batch.id == batch_id)
             .ok_or(crate::error::AppError::Validation {
                 code: "batch_not_found",
-                message: "That transfer is no longer available.",
+                message: "Transfer gone",
                 field: Some("batchId"),
             })?;
         let mut target = record
@@ -1118,7 +1140,7 @@ impl AppState {
             .cloned()
             .ok_or(crate::error::AppError::Validation {
                 code: "target_not_found",
-                message: "That recipient is no longer part of this transfer.",
+                message: "Recipient gone",
                 field: Some("batchId"),
             })?;
         let peer = self
@@ -1126,13 +1148,13 @@ impl AppState {
             .trusted_peer(&target.peer_device_id)?
             .ok_or_else(|| crate::error::AppError::Validation {
                 code: "unknown_recipient",
-                message: "The selected device is not trusted.",
+                message: "Pad not trusted",
                 field: Some("batchId"),
             })?;
         if peer.revoked_at.is_some() {
             return Err(crate::error::AppError::Validation {
                 code: "unknown_recipient",
-                message: "The selected device is not trusted.",
+                message: "Pad not trusted",
                 field: Some("batchId"),
             });
         }
@@ -1226,7 +1248,7 @@ impl AppState {
         self.bump_revision();
         result.map_err(|_| crate::error::AppError::Validation {
             code: "transfer_failed",
-            message: "The transfer did not complete.",
+            message: "Transfer failed",
             field: Some("batchId"),
         })
     }
@@ -1246,7 +1268,7 @@ impl AppState {
             .find(|v| v.batch.id == batch_id)
             .ok_or(crate::error::AppError::Validation {
                 code: "batch_not_found",
-                message: "That transfer is no longer available.",
+                message: "Transfer gone",
                 field: Some("batchId"),
             })?;
         // A target owns its connection and durable checkpoint.  Keep the
@@ -1263,7 +1285,7 @@ impl AppState {
                 .trusted_peer(&target.peer_device_id)?
                 .ok_or_else(|| crate::error::AppError::Validation {
                     code: "unknown_recipient",
-                    message: "The selected device is not trusted.",
+                    message: "Pad not trusted",
                     field: Some("batchId"),
                 })?;
             let endpoint = crate::engine::validate_manual_endpoint(
@@ -1697,6 +1719,46 @@ fn transfer_from_record(record: &PersistedBatch) -> TransferBatchViewModel {
             .collect(),
     }
 }
+/// Folder rows carry no bytes of their own; the files beneath them do.
+fn subtree_bytes(items: &[TransferItem], parent: &str) -> i64 {
+    descendants(items, parent)
+        .map(|item| {
+            if item.kind == "directory" {
+                0
+            } else {
+                item.size
+            }
+        })
+        .sum()
+}
+
+fn subtree_files(items: &[TransferItem], parent: &str) -> i64 {
+    descendants(items, parent)
+        .filter(|item| item.kind != "directory")
+        .count() as i64
+}
+
+fn descendants<'a>(
+    items: &'a [TransferItem],
+    parent: &str,
+) -> impl Iterator<Item = &'a TransferItem> {
+    let mut generation: Vec<String> = vec![parent.to_owned()];
+    let mut found: Vec<&TransferItem> = Vec::new();
+    while !generation.is_empty() {
+        let children: Vec<&TransferItem> = items
+            .iter()
+            .filter(|item| {
+                item.parent_item_id
+                    .as_deref()
+                    .is_some_and(|id| generation.iter().any(|parent| parent == id))
+            })
+            .collect();
+        generation = children.iter().map(|item| item.id.clone()).collect();
+        found.extend(children);
+    }
+    found.into_iter()
+}
+
 fn progress(total: i64, acknowledged: i64) -> u8 {
     if total <= 0 {
         0
@@ -1713,11 +1775,20 @@ fn history_from_record(record: &PersistedBatch) -> HistoryItemViewModel {
             .first()
             .map(|target| target.peer_device_id.clone())
             .unwrap_or_else(|| "Unknown device".into()),
-        summary: format!(
-            "{} item{}",
-            record.items.len(),
-            if record.items.len() == 1 { "" } else { "s" }
-        ),
+        // What was sent, not how many rows it took to describe it: a folder
+        // is one item however many files it carries.
+        summary: {
+            let top_level = record
+                .items
+                .iter()
+                .filter(|item| item.parent_item_id.is_none())
+                .count();
+            format!(
+                "{} item{}",
+                top_level,
+                if top_level == 1 { "" } else { "s" }
+            )
+        },
         time_label: record.batch.created_at.to_string(),
         state: record.batch.state.clone(),
         items: if record.batch.direction == "incoming" {
@@ -1729,7 +1800,13 @@ fn history_from_record(record: &PersistedBatch) -> HistoryItemViewModel {
                     item_id: item.id.clone(),
                     display_name: item.display_name.clone(),
                     kind: item.kind.clone(),
-                    size: item.size,
+                    size: if item.kind == "directory" {
+                        subtree_bytes(&record.items, &item.id)
+                    } else {
+                        item.size
+                    },
+                    item_count: (item.kind == "directory")
+                        .then(|| subtree_files(&record.items, &item.id)),
                     state: item.state.clone(),
                     available: item
                         .destination_path_local

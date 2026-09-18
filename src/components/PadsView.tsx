@@ -14,13 +14,7 @@ export function PadsView({ snapshot }: { snapshot: AppSnapshotViewModel }) {
     <>
       <Floor />
       <div className="q-body center scrolls">
-        <Headline
-          title="Your pads."
-          sub={automatic
-            ? 'Each one proves its own identity before a link is kept. A pad that goes dark holds your pattern until it wakes.'
-            : 'Each new pad needs a matching code on both sides before a link is kept. A pad that goes dark holds your pattern until it wakes.'}
-          id="pads-heading"
-        />
+        <Headline title="Pads" id="pads-heading" />
 
         <div className="pad-grid fade">
           {snapshot.trustedDevices.length
@@ -30,9 +24,7 @@ export function PadsView({ snapshot }: { snapshot: AppSnapshotViewModel }) {
               // of the screen speaks, rather than dropping to a line of prose.
               <div className="tile dark" style={{ gridColumn: '1 / -1', maxWidth: 240, margin: '0 auto' }}>
                 <PadTile />
-                <strong style={{ color: 'var(--dim)' }}>No pad yet</strong>
-                <span className="state">Open Fileporter on another computer</span>
-                <span className="fp">on this network</span>
+                <strong style={{ color: 'var(--dim)' }}>No pads</strong>
               </div>
             )}
         </div>
@@ -63,9 +55,9 @@ function Tile({ device, onError }: { device: TrustedDeviceViewModel; onError: (m
 
   async function rename() {
     const next = alias.trim();
-    if (!next || Array.from(next).length > 128) { onError('Choose a local name of up to 128 characters.'); return; }
+    if (!next || Array.from(next).length > 128) { onError('Name must be 1–128 characters'); return; }
     try { onError(null); await appBridge.renameTrustedDevice(device.id, next); setEditing(false); }
-    catch { onError(`Fileporter could not rename ${device.name}.`); }
+    catch { onError('Rename failed'); }
   }
 
   return (
@@ -89,8 +81,8 @@ function Tile({ device, onError }: { device: TrustedDeviceViewModel; onError: (m
       )}
       <span className={linked ? 'state linked' : 'state'}>
         {linked
-          ? device.autoSend ? 'Linked · beam ready' : 'Linked'
-          : device.lastSeenAt ? `Dark · last echo ${formatWhen(String(device.lastSeenAt))}` : 'Dark · never seen'}
+          ? 'Linked'
+          : device.lastSeenAt ? `Dark · ${formatWhen(String(device.lastSeenAt))}` : 'Dark'}
       </span>
       <span className="fp">{device.certificateFingerprintShort}</span>
       {!editing && (
@@ -107,7 +99,7 @@ function NearbyRow({ device, automatic, onError }: { device: NearbyDeviceViewMod
   async function link() {
     setBusy(true); onError(null);
     try { await appBridge.startPairingDiscovered(device.deviceId); }
-    catch { onError(`${device.displayName} is no longer reachable. Try its address instead.`); }
+    catch { onError(`${device.displayName} unreachable`); }
     finally { setBusy(false); }
   }
   return (
@@ -117,7 +109,7 @@ function NearbyRow({ device, automatic, onError }: { device: NearbyDeviceViewMod
       <span className="addr">{device.endpoint}</span>
       <div className="q-spacer" />
       {automatic
-        ? <span className="proving" role="status">proving identity…</span>
+        ? <span className="proving" role="status">proving…</span>
         : <span className="act"><button type="button" className="chip-mini" disabled={busy} onClick={() => { void link(); }}>{busy ? 'LINKING' : 'LINK'}</button></span>}
     </div>
   );
@@ -139,7 +131,7 @@ function PendingRow({ pairing }: { pairing: PendingPairing }) {
   async function respond(accept: boolean) {
     setBusy(true); setError(null);
     try { if (accept) await appBridge.confirmPairing(pairing.id); else await appBridge.rejectPairing(pairing.id); }
-    catch { setError('That confirmation could not be saved.'); }
+    catch { setError('Failed'); }
     finally { setBusy(false); }
   }
 
@@ -159,13 +151,12 @@ function PendingRow({ pairing }: { pairing: PendingPairing }) {
         }}
       >
         <h2 id={`pairing-${pairing.id}`}>Confirm {pairing.remoteName}</h2>
-        <p id={`pairing-help-${pairing.id}`}>
-          Compare this code with the one on {pairing.remoteName}. Confirm only when both pads show the same code.
-        </p>
+        {/* Comparing the code on both pads is the whole check; it stays. */}
+        <p id={`pairing-help-${pairing.id}`}>Same code on both pads?</p>
         {pairing.sasCode
           ? <output className="pair-code" aria-label={`Security code ${pairing.sasCode}`}>{pairing.sasCode}</output>
-          : <p className="err" role="status">Waiting for a matching code. Confirmation is unavailable until it appears.</p>}
-        <p className="hint">Other pad: {pairing.remoteConfirmed ? 'confirmed' : 'waiting for confirmation'}</p>
+          : <p className="err" role="status">No code yet</p>}
+        <p className="hint">Other pad · {pairing.remoteConfirmed ? 'confirmed' : 'waiting'}</p>
         {error && <p className="err" role="alert">{error}</p>}
         <div className="modal-actions">
           <button ref={rejectRef} type="button" className="chip" disabled={busy} onClick={() => { void respond(false); }}>Reject</button>
@@ -184,7 +175,7 @@ function HeldRow({ batch, devices, onError }: { batch: QueuedBatch; devices: Tru
   async function discard() {
     setBusy(true); onError(null);
     try { await appBridge.cancelBatch(batch.id); }
-    catch { onError('Fileporter could not discard that held pattern.'); }
+    catch { onError('Discard failed'); }
     finally { setBusy(false); }
   }
   return (
@@ -192,7 +183,7 @@ function HeldRow({ batch, devices, onError }: { batch: QueuedBatch; devices: Tru
       <span className="beacon idle" aria-hidden="true" />
       <span className="addr" style={{ color: 'var(--soft)', fontSize: 13 }}>{batch.itemCount} item{batch.itemCount === 1 ? '' : 's'}</span>
       <div className="q-spacer" />
-      <span className="held">held for {target?.name ?? 'a dark pad'}</span>
+      <span className="held">held · {target?.name ?? 'dark pad'}</span>
       <span className="act">
         <button type="button" className="chip-mini danger" disabled={busy} onClick={() => { void discard(); }}>DISCARD</button>
       </span>
@@ -204,16 +195,16 @@ function AddPad({ onError }: { onError: (message: string | null) => void }) {
   const [endpoint, setEndpoint] = useState('');
   const [busy, setBusy] = useState(false);
   async function add() {
-    if (!endpoint.trim()) { onError('Enter the private address shown on your other pad.'); return; }
+    if (!endpoint.trim()) { onError('Enter an address'); return; }
     setBusy(true); onError(null);
     try { await appBridge.startPairingAtEndpoint(endpoint.trim()); setEndpoint(''); }
-    catch { onError('Fileporter could not reach a pad at that address.'); }
+    catch { onError('No pad at that address'); }
     finally { setBusy(false); }
   }
   return (
     <div className="q-foot align-end">
       <div className="add-pad">
-        <label className="lbl" htmlFor="pad-endpoint">Add a pad by address</label>
+        <label className="lbl" htmlFor="pad-endpoint">Add by address</label>
         <span className="entry">
           <input
             id="pad-endpoint"
@@ -228,7 +219,6 @@ function AddPad({ onError }: { onError: (message: string | null) => void }) {
         </span>
       </div>
       <div className="q-spacer" />
-      <span className="foot-detail">A revoked pad stays revoked · it cannot quietly relink</span>
     </div>
   );
 }

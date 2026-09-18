@@ -349,6 +349,10 @@ pub struct DiscoveryCoordinator {
     /// This device answers its own multicast queries, so without this it
     /// discovers itself and opens a pairing handshake against its own listener.
     local_device_id: Mutex<Option<String>>,
+    /// Advances whenever what a snapshot shows changes: a pad going online or
+    /// dark, or a nearby candidate appearing or leaving. Nothing else signals
+    /// the UI for these, since no transfer or pairing state moves with them.
+    generation: std::sync::atomic::AtomicU64,
 }
 
 impl DiscoveryCoordinator {
@@ -361,7 +365,18 @@ impl DiscoveryCoordinator {
             state: Mutex::new(MdnsState::Disabled),
             errors: Mutex::new(VecDeque::new()),
             local_device_id: Mutex::new(None),
+            generation: std::sync::atomic::AtomicU64::new(0),
         }
+    }
+
+    /// See `generation`; callers compare it before and after a pass.
+    pub fn generation(&self) -> u64 {
+        self.generation.load(std::sync::atomic::Ordering::Acquire)
+    }
+
+    fn changed(&self) {
+        self.generation
+            .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
     }
 
     /// Records this device's own identity so its advertisement is ignored.
@@ -495,17 +510,23 @@ impl DiscoveryCoordinator {
     /// Drops a peer the transport says is gone. Presence is cleared rather
     /// than left to age out so the UI stops offering an unreachable target.
     pub fn forget_presence(&self, device_id: &str) {
-        self.nearby
+        let mut changed = self
+            .nearby
             .lock()
             .expect("nearby mutex poisoned")
-            .remove(device_id);
+            .remove(device_id)
+            .is_some();
         if let Some(presence) = self
             .presence
             .lock()
             .expect("presence mutex poisoned")
             .get_mut(device_id)
         {
+            changed |= presence.online;
             presence.online = false;
+        }
+        if changed {
+            self.changed();
         }
     }
 
@@ -521,9 +542,14 @@ impl DiscoveryCoordinator {
                 online: false,
                 last_seen_at: None,
             });
+        let changed = entry.online != reachable;
         entry.online = reachable;
         if reachable {
             entry.last_seen_at = Some(now);
+        }
+        drop(presence);
+        if changed {
+            self.changed();
         }
     }
 
@@ -545,13 +571,19 @@ impl DiscoveryCoordinator {
             if nearby.len() >= MAX_NEARBY_CANDIDATES && !nearby.contains_key(&record.device_id) {
                 return false;
             }
-            nearby.insert(
-                record.device_id.clone(),
-                NearbyCandidate {
-                    record,
-                    last_seen_at: now,
-                },
-            );
+            let appeared = nearby
+                .insert(
+                    record.device_id.clone(),
+                    NearbyCandidate {
+                        record,
+                        last_seen_at: now,
+                    },
+                )
+                .is_none();
+            drop(nearby);
+            if appeared {
+                self.changed();
+            }
             return true;
         };
         // A revoked row is a durable deny decision, not a trusted presence.
@@ -570,16 +602,25 @@ impl DiscoveryCoordinator {
             return false;
         }
         let mut updated: TrustedPeer = peer;
+        // The record is identity- and pin-matched, so the name in it is this
+        // peer's current name. Without this a pad keeps whatever name it had
+        // when it was first trusted, even after it is renamed. A local alias
+        // is the user's own choice and is never overwritten.
+        let renamed = updated.remote_name != record.device_name;
+        updated.remote_name = record.device_name.clone();
         updated.endpoint = Some(record.endpoint.to_string());
         updated.last_seen_at = Some(now);
         if repository.upsert_trusted_peer(&updated).is_err() {
             return false;
         }
-        self.nearby
+        let was_nearby = self
+            .nearby
             .lock()
             .expect("nearby mutex poisoned")
-            .remove(&record.device_id);
-        self.presence
+            .remove(&record.device_id)
+            .is_some();
+        let was_online = self
+            .presence
             .lock()
             .expect("presence mutex poisoned")
             .insert(
@@ -589,28 +630,40 @@ impl DiscoveryCoordinator {
                     online: true,
                     last_seen_at: Some(now),
                 },
-            );
+            )
+            .is_some_and(|previous| previous.online);
+        if was_nearby || !was_online || renamed {
+            self.changed();
+        }
         true
     }
 
     pub fn expire(&self, now: i64) {
+        let mut changed = false;
         for presence in self
             .presence
             .lock()
             .expect("presence mutex poisoned")
             .values_mut()
         {
-            if presence
-                .last_seen_at
-                .is_some_and(|seen| now.saturating_sub(seen) >= PRESENCE_TTL_SECS)
+            if presence.online
+                && presence
+                    .last_seen_at
+                    .is_some_and(|seen| now.saturating_sub(seen) >= PRESENCE_TTL_SECS)
             {
                 presence.online = false;
+                changed = true;
             }
         }
-        self.nearby
-            .lock()
-            .expect("nearby mutex poisoned")
+        let mut nearby = self.nearby.lock().expect("nearby mutex poisoned");
+        let before = nearby.len();
+        nearby
             .retain(|_, candidate| now.saturating_sub(candidate.last_seen_at) < PRESENCE_TTL_SECS);
+        changed |= nearby.len() != before;
+        drop(nearby);
+        if changed {
+            self.changed();
+        }
     }
     pub fn snapshot(&self, peer: &TrustedPeer) -> Presence {
         self.presence
@@ -870,6 +923,70 @@ mod tests {
 
         coordinator.refresh(&repository, 100 + PRESENCE_TTL_SECS);
         assert!(!coordinator.snapshot(&peer("QUIET", &pin)).online);
+    }
+
+    #[test]
+    fn a_renamed_peer_is_shown_under_its_new_name() {
+        // The name lives on the peer, not the pin, so a pad that is renamed
+        // (or whose name was wrong when it was first trusted) must not keep
+        // the old one for the life of the pairing.
+        let mock = Arc::new(Mutex::new(Mock::default()));
+        let pin = "a1".repeat(32);
+        let mut renamed = record("NAMED", &pin, "192.168.1.31:48721");
+        renamed.device_name = "Studio Mac".into();
+        mock.lock().unwrap().records.push_back(vec![renamed]);
+        let coordinator = DiscoveryCoordinator::new(Box::new(mock.clone()));
+        let temp = tempfile::tempdir().unwrap();
+        let repository = SettingsRepository::open(temp.path().join("db.sqlite")).unwrap();
+        let mut stored = peer("NAMED", &pin);
+        stored.remote_name = "Fileporter device".into();
+        stored.local_alias = None;
+        repository.upsert_trusted_peer(&stored).unwrap();
+
+        coordinator.refresh(&repository, 100);
+
+        let updated = repository.trusted_peer("NAMED").unwrap().unwrap();
+        assert_eq!(updated.remote_name, "Studio Mac");
+        assert_eq!(
+            updated.local_alias, None,
+            "a local rename is the user's own"
+        );
+    }
+
+    #[test]
+    fn generation_moves_only_when_what_the_ui_shows_changes() {
+        // Presence changes move no durable state, so the generation is the
+        // only signal the UI gets that a pad came online or went dark.
+        let mock = Arc::new(Mutex::new(Mock::default()));
+        let pin = "f".repeat(64);
+        let seen = record("SHOWN", &pin, "192.168.1.29:48721");
+        mock.lock().unwrap().records.push_back(vec![seen.clone()]);
+        mock.lock().unwrap().records.push_back(vec![seen]);
+        let coordinator = DiscoveryCoordinator::new(Box::new(mock.clone()));
+        let temp = tempfile::tempdir().unwrap();
+        let repository = SettingsRepository::open(temp.path().join("db.sqlite")).unwrap();
+        repository
+            .upsert_trusted_peer(&peer("SHOWN", &pin))
+            .unwrap();
+
+        let start = coordinator.generation();
+        coordinator.refresh(&repository, 100);
+        let online = coordinator.generation();
+        assert!(online > start, "coming online must advance the generation");
+
+        coordinator.refresh(&repository, 101);
+        coordinator.record_reachability("SHOWN", true, 102);
+        assert_eq!(
+            coordinator.generation(),
+            online,
+            "a repeat sighting is not a change"
+        );
+
+        coordinator.record_reachability("SHOWN", false, 103);
+        assert!(
+            coordinator.generation() > online,
+            "going dark must advance it"
+        );
     }
 
     #[test]
